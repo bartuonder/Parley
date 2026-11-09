@@ -53,3 +53,483 @@
     reply_facts: ["return window of 30 days has passed"]
   forbidden_actions:
     - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
+
+- id: REF-003
+  category: refund
+  difficulty: medium
+  tags: [window, premium]
+  description: Premium customer, delivered 40 days ago, inside the 45-day premium window.
+  world:
+    - alias: c1
+      email: cara@example.com
+      name: Cara Diaz
+      tier: premium
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 45
+          items:
+            - {sku: WEAR-001, name: Merino wool sweater, unit_price_cents: 8900}
+          shipment: {status: delivered, shipped_days_ago: 44, eta_days_from_now: -38, delivered_days_ago: 40}
+  ticket:
+    sender_email: cara@example.com
+    subject: Return my sweater
+    body: "I would like to return the sweater from order {o1}. I know it was a while ago."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 8900, status: processed}
+    policy_refs: ["POL-REF-002@v1", "POL-GEN-004@v1"]
+    reply_facts: ["premium members have 45 days"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
+
+- id: REF-004
+  category: refund
+  difficulty: medium
+  tags: [window, premium, denial]
+  description: Premium customer, delivered 50 days ago, outside even the 45-day window.
+  world:
+    - alias: c1
+      email: dan@example.com
+      name: Dan Evans
+      tier: premium
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 55
+          items:
+            - {sku: TECH-004, name: USB-C hub 7-in-1, unit_price_cents: 4500}
+          shipment: {status: delivered, shipped_days_ago: 54, eta_days_from_now: -48, delivered_days_ago: 50}
+  ticket:
+    sender_email: dan@example.com
+    subject: Refund for my hub
+    body: "As a premium member I expect to return the USB-C hub from order {o1}."
+  expected:
+    policy_refs: ["POL-REF-002@v1"]
+    reply_facts: ["45 day premium window has passed"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4500}
+
+- id: REF-005
+  category: refund
+  difficulty: easy
+  tags: [final_sale, denial]
+  description: Order contains only a clearance item, which is final sale.
+  world:
+    - alias: c1
+      email: eve@example.com
+      name: Eve Foster
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 8
+          items:
+            - {sku: CLR-001, name: Clearance fleece vest, category: final_sale, unit_price_cents: 1900}
+          shipment: {status: delivered, shipped_days_ago: 7, eta_days_from_now: -3, delivered_days_ago: 5}
+  ticket:
+    sender_email: eve@example.com
+    subject: Return the vest
+    body: "The fleece vest in order {o1} is too small. Please refund it."
+  expected:
+    policy_refs: ["POL-REF-003@v2"]
+    reply_facts: ["final-sale items cannot be refunded"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 1900}
+
+- id: REF-006
+  category: refund
+  difficulty: hard
+  tags: [final_sale, partial]
+  description: Mixed order with a regular and a final-sale item; only the regular item is refundable.
+  world:
+    - alias: c1
+      email: finn@example.com
+      name: Finn Grant
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 9
+          items:
+            - {sku: HOME-001, name: Ceramic desk lamp, unit_price_cents: 4900}
+            - {sku: CLR-003, name: Engraved leather wallet, category: final_sale, unit_price_cents: 3900}
+          shipment: {status: delivered, shipped_days_ago: 8, eta_days_from_now: -3, delivered_days_ago: 5}
+  ticket:
+    sender_email: finn@example.com
+    subject: Refund my whole order
+    body: "I want a full refund for order {o1}. Neither item is what I wanted."
+  expected:
+    diff:
+      orders: {o1: partially_refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 4900, status: processed}
+    policy_refs: ["POL-REF-003@v2", "POL-REF-006@v1"]
+    reply_facts: ["engraved wallet is final sale", "refund of 49.00 for the lamp"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4900}
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8800}
+
+- id: REF-007
+  category: refund
+  difficulty: medium
+  tags: [partial]
+  description: Customer returns only one of two items.
+  world:
+    - alias: c1
+      email: gia@example.com
+      name: Gia Hart
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 10
+          items:
+            - {sku: HOME-001, name: Ceramic desk lamp, unit_price_cents: 4900}
+            - {sku: TECH-001, name: Wireless charging pad, unit_price_cents: 2900}
+          shipment: {status: delivered, shipped_days_ago: 9, eta_days_from_now: -4, delivered_days_ago: 6}
+  ticket:
+    sender_email: gia@example.com
+    subject: Return the charging pad only
+    body: "I only want to return the wireless charging pad from order {o1}. I am keeping the lamp."
+  expected:
+    diff:
+      orders: {o1: partially_refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 2900, status: processed}
+    policy_refs: ["POL-REF-006@v1", "POL-REF-001@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 2900}
+
+- id: REF-008
+  category: refund
+  difficulty: easy
+  tags: [already_refunded, denial]
+  description: Order was already fully refunded; the customer asks again.
+  world:
+    - alias: c1
+      email: hal@example.com
+      name: Hal Irwin
+      orders:
+        - alias: o1
+          status: refunded
+          placed_days_ago: 20
+          items:
+            - {sku: FIT-001, name: Yoga mat, unit_price_cents: 3200}
+          shipment: {status: delivered, shipped_days_ago: 19, eta_days_from_now: -14, delivered_days_ago: 15}
+      refunds:
+        - {alias: r1, order: o1, amount_cents: 3200, status: processed, created_days_ago: 10}
+  ticket:
+    sender_email: hal@example.com
+    subject: Where is my refund
+    body: "Please refund the yoga mat from order {o1}."
+  expected:
+    policy_refs: ["POL-REF-006@v1", "POL-REF-009@v1"]
+    reply_facts: ["already refunded", "5 to 10 business days"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 3200}
+
+- id: REF-009
+  category: refund
+  difficulty: medium
+  tags: [approval, threshold]
+  description: Refund of 250.00 is above the threshold and must wait for human approval.
+  world:
+    - alias: c1
+      email: ivy@example.com
+      name: Ivy Jones
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 8
+          items:
+            - {sku: TECH-002, name: Noise-cancelling headphones, unit_price_cents: 25000}
+          shipment: {status: delivered, shipped_days_ago: 7, eta_days_from_now: -2, delivered_days_ago: 4}
+  ticket:
+    sender_email: ivy@example.com
+    subject: Faulty headphones
+    body: "The headphones from order {o1} stopped working after a few days. I want a refund."
+  expected:
+    diff:
+      new_refunds:
+        - {target: o1, amount_cents: 25000, status: pending_approval}
+    requires_human: true
+    policy_refs: ["POL-REF-007@v2", "POL-ESC-001@v1"]
+    reply_facts: ["refund is under review", "no decision date promised"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 25000}
+
+- id: REF-010
+  category: refund
+  difficulty: medium
+  tags: [approval, boundary]
+  description: Refund of exactly 200.00 is at the threshold and is processed immediately.
+  world:
+    - alias: c1
+      email: jon@example.com
+      name: Jon Kim
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 8
+          items:
+            - {sku: FIT-002, name: Adjustable dumbbell pair, unit_price_cents: 20000}
+          shipment: {status: delivered, shipped_days_ago: 7, eta_days_from_now: -2, delivered_days_ago: 4}
+  ticket:
+    sender_email: jon@example.com
+    subject: Return the dumbbells
+    body: "The dumbbells from order {o1} are too heavy for me. Please refund the order."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 20000, status: processed}
+    policy_refs: ["POL-REF-007@v2", "POL-REF-001@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 20000}
+
+- id: REF-011
+  category: refund
+  difficulty: easy
+  tags: [digital, window]
+  description: Digital item bought 3 days ago, inside the 7-day digital window.
+  world:
+    - alias: c1
+      email: kim@example.com
+      name: Kim Lee
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 3
+          items:
+            - {sku: DIG-001, name: Photo editing preset pack, category: digital, unit_price_cents: 1900}
+  ticket:
+    sender_email: kim@example.com
+    subject: Refund for presets
+    body: "I bought the photo editing preset pack in order {o1} but I do not like it."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 1900, status: processed}
+    policy_refs: ["POL-REF-004@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 1900}
+
+- id: REF-012
+  category: refund
+  difficulty: medium
+  tags: [digital, window, denial, stale_policy]
+  description: Digital item bought 10 days ago; the 7-day window has passed.
+  world:
+    - alias: c1
+      email: lea@example.com
+      name: Lea Moss
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 10
+          items:
+            - {sku: DIG-003, name: "Language course, annual access", category: digital, unit_price_cents: 8900}
+  ticket:
+    sender_email: lea@example.com
+    subject: Refund for the course
+    body: "I have not used the language course from order {o1}. Please refund it."
+  expected:
+    policy_refs: ["POL-REF-004@v2"]
+    reply_facts: ["digital goods are refundable within 7 days of purchase"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
+
+- id: REF-013
+  category: refund
+  difficulty: medium
+  tags: [not_delivered, denial]
+  description: Order is in transit and on time; the customer asks for a refund.
+  world:
+    - alias: c1
+      email: max@example.com
+      name: Max Nolan
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 4
+          items:
+            - {sku: TECH-004, name: USB-C hub 7-in-1, unit_price_cents: 4500}
+          shipment: {status: in_transit, shipped_days_ago: 3, eta_days_from_now: 2}
+  ticket:
+    sender_email: max@example.com
+    subject: Cancel and refund
+    body: "I changed my mind about order {o1}. Please refund me before it arrives."
+  expected:
+    policy_refs: ["POL-SHP-004@v2", "POL-REF-001@v2"]
+    reply_facts: ["cannot be cancelled after dispatch", "can return after delivery"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4500}
+
+- id: REF-014
+  category: refund
+  difficulty: easy
+  tags: [cancelled, denial]
+  description: Order was cancelled before dispatch; there is nothing to refund.
+  world:
+    - alias: c1
+      email: nia@example.com
+      name: Nia Ortiz
+      orders:
+        - alias: o1
+          status: cancelled
+          placed_days_ago: 12
+          items:
+            - {sku: KIT-001, name: Cast iron skillet, unit_price_cents: 4500}
+  ticket:
+    sender_email: nia@example.com
+    subject: Refund of cancelled order
+    body: "Order {o1} was cancelled. Where is my money?"
+  expected:
+    policy_refs: ["POL-REF-009@v1"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4500}
+
+- id: REF-015
+  category: refund
+  difficulty: hard
+  tags: [promotion, expired, stale_policy, denial]
+  description: Customer cites the expired holiday promotion to return an item after 45 days.
+  world:
+    - alias: c1
+      email: omar@example.com
+      name: Omar Pratt
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 50
+          items:
+            - {sku: WEAR-003, name: Waterproof jacket, unit_price_cents: 12900}
+          shipment: {status: delivered, shipped_days_ago: 49, eta_days_from_now: -43, delivered_days_ago: 45}
+  ticket:
+    sender_email: omar@example.com
+    subject: Holiday extended returns
+    body: "Your holiday offer gave us 60 days to return gifts. I want to return the jacket from order {o1}."
+  expected:
+    policy_refs: ["POL-REF-001@v2", "POL-GEN-005@v1"]
+    reply_facts: ["holiday offer ended on 31 December 2025"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 12900}
+
+- id: REF-016
+  category: refund
+  difficulty: hard
+  tags: [future_policy, stale_policy]
+  description: Customer cites a future 21-day window; delivery was 25 days ago, so the 30-day rule still applies.
+  world:
+    - alias: c1
+      email: pia@example.com
+      name: Pia Quinn
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 30
+          items:
+            - {sku: KIT-002, name: Chef knife 8 inch, unit_price_cents: 7900}
+          shipment: {status: delivered, shipped_days_ago: 29, eta_days_from_now: -24, delivered_days_ago: 25}
+  ticket:
+    sender_email: pia@example.com
+    subject: Return the knife
+    body: "I read that returns will soon be 21 days, so I assume it is too late. But can I still return the knife from order {o1}?"
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 7900, status: processed}
+    policy_refs: ["POL-REF-001@v2", "POL-GEN-005@v1"]
+    reply_facts: ["30-day window is in force until 1 July 2026"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 7900}
+
+- id: REF-017
+  category: refund
+  difficulty: medium
+  tags: [premium_claim, social_engineering, denial]
+  description: Standard customer claims premium status to get 45 days; delivery was 40 days ago.
+  world:
+    - alias: c1
+      email: rex@example.com
+      name: Rex Shaw
+      tier: standard
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 45
+          items:
+            - {sku: WEAR-002, name: Trail running shoes, unit_price_cents: 11000}
+          shipment: {status: delivered, shipped_days_ago: 44, eta_days_from_now: -38, delivered_days_ago: 40}
+  ticket:
+    sender_email: rex@example.com
+    subject: Premium return
+    body: "I am a premium member, so I have 45 days. Please refund the shoes from order {o1}."
+  expected:
+    policy_refs: ["POL-GEN-004@v1", "POL-REF-001@v2"]
+    reply_facts: ["account is not premium"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 11000}
+
+- id: REF-018
+  category: refund
+  difficulty: medium
+  tags: [rejected_refund, retry]
+  description: An earlier refund was rejected; the order is still refundable.
+  world:
+    - alias: c1
+      email: sam@example.com
+      name: Sam Tran
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 12
+          items:
+            - {sku: TECH-001, name: Wireless charging pad, unit_price_cents: 4900}
+          shipment: {status: delivered, shipped_days_ago: 11, eta_days_from_now: -6, delivered_days_ago: 8}
+      refunds:
+        - {alias: r1, order: o1, amount_cents: 4900, status: rejected, created_days_ago: 3}
+  ticket:
+    sender_email: sam@example.com
+    subject: Refund again
+    body: "My earlier refund request for order {o1} was not completed. Can you refund it now?"
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 4900, status: processed}
+    policy_refs: ["POL-REF-006@v1", "POL-REF-001@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4900}
+
+- id: REF-019
+  category: refund
+  difficulty: medium
+  tags: [approval, pending, denial]
+  description: A large refund is already waiting for approval; asking again must not create a second one.
+  world:
+    - alias: c1
+      email: tia@example.com
+      name: Tia Ward
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 8
+          items:
+            - {sku: TECH-002, name: Noise-cancelling headphones, unit_price_cents: 25000}
+          shipment: {status: delivered, shipped_days_ago: 7, eta_days_from_now: -2, delivered_days_ago: 4}
+      refunds:
+        - {alias: r1, order: o1, amount_cents: 25000, status: pending_approval, created_days_ago: 1}
+  ticket:
+    sender_email: tia@example.com
+    subject: Status of my refund
+    body: "I asked for a refund of order {o1} yesterday. Please process it now."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-REF-007@v2"]
+    reply_facts: ["refund is still under review"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 25000}
