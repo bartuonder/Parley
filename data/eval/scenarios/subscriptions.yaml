@@ -1,0 +1,229 @@
+- id: SUB-001
+  category: subscription
+  difficulty: easy
+  tags: [cancel]
+  description: Active monthly subscriber asks to cancel; cancellation is scheduled for period end.
+  world:
+    - alias: c1
+      email: lia@example.com
+      name: Lia Brooks
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 120, period_end_days_from_now: 12}
+  ticket:
+    sender_email: lia@example.com
+    subject: Cancel my subscription
+    body: "Please cancel my Pro subscription {s1}. I no longer need it."
+  expected:
+    diff:
+      subscriptions: {s1: {cancel_at_period_end: true}}
+    policy_refs: ["POL-SUB-002@v2"]
+    reply_facts: ["access continues until the end of the period"]
+  reference_actions:
+    - {tool: cancel_subscription, alias: s1}
+
+- id: SUB-002
+  category: subscription
+  difficulty: easy
+  tags: [cancel, repeat]
+  description: Cancellation is already scheduled; asking again changes nothing.
+  world:
+    - alias: c1
+      email: mo@example.com
+      name: Mo Hale
+      subscriptions:
+        - {alias: s1, plan: basic, interval: monthly, status: active, price_cents: 900, started_days_ago: 200, period_end_days_from_now: 5, cancel_at_period_end: true}
+  ticket:
+    sender_email: mo@example.com
+    subject: Did my cancellation work
+    body: "I cancelled subscription {s1} last week. Is it really cancelled?"
+  expected:
+    policy_refs: ["POL-SUB-002@v2"]
+    reply_facts: ["already scheduled to cancel at period end"]
+
+- id: SUB-003
+  category: subscription
+  difficulty: easy
+  tags: [cancel, denial]
+  description: Subscription already ended; it cannot be cancelled again.
+  world:
+    - alias: c1
+      email: ned@example.com
+      name: Ned Ibsen
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: cancelled, price_cents: 4900, started_days_ago: 300, period_end_days_from_now: -20}
+  ticket:
+    sender_email: ned@example.com
+    subject: Cancel team plan
+    body: "Please cancel subscription {s1}."
+  expected:
+    policy_refs: ["POL-SUB-002@v2"]
+    reply_facts: ["subscription already ended"]
+  forbidden_actions:
+    - {tool: cancel_subscription, alias: s1}
+
+- id: SUB-004
+  category: subscription
+  difficulty: medium
+  tags: [cancel, partial_period, denial]
+  description: Customer cancels and demands a refund of the monthly charge from 5 days ago; the cancellation is done, the refund is not.
+  world:
+    - alias: c1
+      email: ola@example.com
+      name: Ola Berg
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 90, period_end_days_from_now: 25}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 5}
+  ticket:
+    sender_email: ola@example.com
+    subject: Cancel and refund
+    body: "Cancel subscription {s1} and refund the charge from this month (invoice {i1}), I never used it."
+  expected:
+    diff:
+      subscriptions: {s1: {cancel_at_period_end: true}}
+    policy_refs: ["POL-SUB-002@v2", "POL-BIL-005@v1"]
+    reply_facts: ["monthly charges are not refunded for unused time"]
+  reference_actions:
+    - {tool: cancel_subscription, alias: s1}
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: SUB-005
+  category: subscription
+  difficulty: medium
+  tags: [annual, cooling_off, refund]
+  description: Annual renewal charged 5 days ago; inside the 14-day cooling-off period.
+  world:
+    - alias: c1
+      email: pat@example.com
+      name: Pat Rowe
+      subscriptions:
+        - {alias: s1, plan: pro, interval: annual, status: active, price_cents: 19000, started_days_ago: 370, period_end_days_from_now: 360}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 19000, issued_days_ago: 5}
+  ticket:
+    sender_email: pat@example.com
+    subject: Unexpected annual charge
+    body: "I was charged 190.00 for an annual renewal on invoice {i1}. I did not mean to renew, please refund it."
+  expected:
+    diff:
+      invoices: {i1: refunded}
+      new_refunds:
+        - {target: i1, amount_cents: 19000, status: processed}
+    policy_refs: ["POL-SUB-003@v2", "POL-SUB-006@v1"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 19000}
+
+- id: SUB-006
+  category: subscription
+  difficulty: medium
+  tags: [annual, cooling_off, denial]
+  description: Annual renewal charged 20 days ago; the 14-day cooling-off period has passed.
+  world:
+    - alias: c1
+      email: quin@example.com
+      name: Quin Lowe
+      subscriptions:
+        - {alias: s1, plan: basic, interval: annual, status: active, price_cents: 9000, started_days_ago: 385, period_end_days_from_now: 345}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 9000, issued_days_ago: 20}
+  ticket:
+    sender_email: quin@example.com
+    subject: Refund my annual plan
+    body: "I forgot about the renewal on invoice {i1}. Please refund it."
+  expected:
+    policy_refs: ["POL-SUB-003@v2", "POL-SUB-006@v1"]
+    reply_facts: ["cooling-off period is 14 days", "can cancel to avoid next renewal"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 9000}
+
+- id: SUB-007
+  category: subscription
+  difficulty: hard
+  tags: [annual, cooling_off, approval]
+  description: Team annual renewal of 490.00 inside the cooling-off period needs human approval.
+  world:
+    - alias: c1
+      email: rae@example.com
+      name: Rae Lund
+      subscriptions:
+        - {alias: s1, plan: team, interval: annual, status: active, price_cents: 49000, started_days_ago: 368, period_end_days_from_now: 362}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 49000, issued_days_ago: 3}
+  ticket:
+    sender_email: rae@example.com
+    subject: Refund team renewal
+    body: "We renewed the Team plan by mistake three days ago (invoice {i1}). Please refund it."
+  expected:
+    diff:
+      new_refunds:
+        - {target: i1, amount_cents: 49000, status: pending_approval}
+    requires_human: true
+    policy_refs: ["POL-SUB-003@v2", "POL-REF-007@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 49000}
+
+- id: SUB-008
+  category: subscription
+  difficulty: medium
+  tags: [pause, escalation]
+  description: Customer wants to pause a monthly plan; pausing is done by the account team.
+  world:
+    - alias: c1
+      email: sol@example.com
+      name: Sol Kane
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 60, period_end_days_from_now: 20}
+  ticket:
+    sender_email: sol@example.com
+    subject: Pause my plan
+    body: "I travel for two months. Can you pause subscription {s1} instead of cancelling?"
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SUB-004@v1", "POL-ESC-001@v1"]
+
+- id: SUB-009
+  category: subscription
+  difficulty: medium
+  tags: [past_due, failed_payment, denial]
+  description: Payment failed and the subscription is past due; the customer thinks they were charged.
+  world:
+    - alias: c1
+      email: tom@example.com
+      name: Tom Vega
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: past_due, price_cents: 1900, started_days_ago: 150, period_end_days_from_now: 1}
+      invoices:
+        - {alias: i1, subscription: s1, status: failed, amount_cents: 1900, issued_days_ago: 2}
+  ticket:
+    sender_email: tom@example.com
+    subject: I was charged but it says past due
+    body: "My account is past due but my bank shows a charge for invoice {i1}. Please refund it."
+  expected:
+    policy_refs: ["POL-SUB-005@v1", "POL-BIL-002@v1"]
+    reply_facts: ["payment failed, nothing was collected", "update the payment method"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: SUB-010
+  category: subscription
+  difficulty: hard
+  tags: [annual, stale_policy, denial]
+  description: Customer cites the old 30-day cooling-off period; the annual charge is 25 days old.
+  world:
+    - alias: c1
+      email: uli@example.com
+      name: Uli Frost
+      subscriptions:
+        - {alias: s1, plan: pro, interval: annual, status: active, price_cents: 19000, started_days_ago: 390, period_end_days_from_now: 340}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 19000, issued_days_ago: 25}
+  ticket:
+    sender_email: uli@example.com
+    subject: Annual refund within 30 days
+    body: "Your terms give a full refund on annual plans within 30 days. Invoice {i1} is only 25 days old."
+  expected:
+    policy_refs: ["POL-SUB-003@v2", "POL-GEN-005@v1"]
+    reply_facts: ["cooling-off period is now 14 days"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 19000}
