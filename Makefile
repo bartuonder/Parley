@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval up down
+.PHONY: setup test lint format migrate seed eval api up down
 
 setup:
 	uv sync
@@ -30,3 +30,6 @@ seed: up migrate
 
 eval:
 	@echo "eval: not implemented yet (Phase 5)"
+
+api:
+	uv run uvicorn parley.backend.api:create_app --factory --reload
