@@ -10,6 +10,7 @@ from parley.evals.schema import Scenario
 from parley.evals.state import diff_snapshots, normalize, take_snapshot
 from parley.evals.world import build_world, render_text
 from parley.policies.loader import load_policies
+from parley.policies.models import Region
 from parley.policies.validate import current_docs
 from parley.seed.config import REFERENCE_NOW
 
@@ -51,7 +52,8 @@ def test_forbidden_actions_are_refused_by_the_backend(
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=ids(SCENARIOS))
 def test_cited_policies_exist_and_are_in_force(scenario: Scenario) -> None:
-    in_force = {d.key for d in current_docs(load_policies(), date(2026, 6, 1))}
+    docs = load_policies()
+    in_force = {d.key for region in Region for d in current_docs(docs, date(2026, 6, 1), region)}
     for ref in scenario.expected.policy_refs:
         assert ref in in_force, ref
 
