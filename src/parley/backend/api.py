@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator, Iterator, Sequence
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -12,6 +12,8 @@ from parley.backend.schemas import (
     EligibilityOut,
     InvoiceOut,
     OrderOut,
+    RefundOut,
+    RefundRequest,
     ShipmentOut,
     SubscriptionOut,
 )
@@ -23,7 +25,7 @@ from parley.backend.services import (
     NotFoundError,
 )
 from parley.clock import utcnow
-from parley.db.models import Customer, Invoice, Order, Shipment, Subscription
+from parley.db.models import Customer, Invoice, Order, Refund, Shipment, Subscription
 from parley.db.session import make_engine
 
 
@@ -45,6 +47,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     app = FastAPI(title="Parley backend", version="0.1.0", lifespan=lifespan)
     _register_errors(app)
     _register_read_routes(app)
+    _register_write_routes(app)
     return app
 
 
@@ -114,3 +117,33 @@ def _register_read_routes(app: FastAPI) -> None:
     @app.get("/invoices/{invoice_id}/refund-eligibility", response_model=EligibilityOut)
     def invoice_eligibility(invoice_id: int, backend: BackendDep) -> EligibilityOut:
         return EligibilityOut.of(backend.check_invoice_refund(invoice_id))
+
+
+def _register_write_routes(app: FastAPI) -> None:
+    @app.post("/refunds", response_model=RefundOut, status_code=201)
+    def issue_refund(body: RefundRequest, response: Response, backend: BackendDep) -> Refund:
+        refund, created = backend.issue_refund(
+            body.target, body.target_id, body.amount_cents, body.reason, body.idempotency_key
+        )
+        backend.session.commit()
+        if not created:
+            response.status_code = 200
+        return refund
+
+    @app.post("/refunds/{refund_id}/approve", response_model=RefundOut)
+    def approve_refund(refund_id: int, backend: BackendDep) -> Refund:
+        refund = backend.resolve_refund(refund_id, approve=True)
+        backend.session.commit()
+        return refund
+
+    @app.post("/refunds/{refund_id}/reject", response_model=RefundOut)
+    def reject_refund(refund_id: int, backend: BackendDep) -> Refund:
+        refund = backend.resolve_refund(refund_id, approve=False)
+        backend.session.commit()
+        return refund
+
+    @app.post("/subscriptions/{subscription_id}/cancel", response_model=SubscriptionOut)
+    def cancel_subscription(subscription_id: int, backend: BackendDep) -> Subscription:
+        sub = backend.cancel_subscription(subscription_id)
+        backend.session.commit()
+        return sub
