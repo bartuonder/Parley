@@ -1,0 +1,270 @@
+- id: SHP-001
+  category: shipping
+  difficulty: easy
+  tags: [late, denial]
+  description: Parcel is 3 days past its estimate but not lost; no refund yet.
+  world:
+    - alias: c1
+      email: uma@example.com
+      name: Uma Patel
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 12
+          items:
+            - {sku: HOME-003, name: Stoneware mug set, unit_price_cents: 3400}
+          shipment: {status: in_transit, carrier: UPS, shipped_days_ago: 10, eta_days_from_now: -3}
+  ticket:
+    sender_email: uma@example.com
+    subject: My order is late
+    body: "Order {o1} should have arrived 3 days ago. I want a refund now."
+  expected:
+    policy_refs: ["POL-SHP-003@v1", "POL-REF-005@v2"]
+    reply_facts: ["not yet lost", "refund available when more than 10 days late"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 3400}
+
+- id: SHP-002
+  category: shipping
+  difficulty: medium
+  tags: [lost, refund]
+  description: Parcel is 11 days past its estimate, so it counts as lost and is refunded in full.
+  world:
+    - alias: c1
+      email: vic@example.com
+      name: Vic Walsh
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 25
+          items:
+            - {sku: HOME-002, name: Linen throw blanket, unit_price_cents: 5900}
+          shipment: {status: in_transit, carrier: FedEx, shipped_days_ago: 23, eta_days_from_now: -11}
+  ticket:
+    sender_email: vic@example.com
+    subject: Parcel never arrived
+    body: "Order {o1} has been in transit for weeks. It is far past the estimated date."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 5900, status: processed}
+    policy_refs: ["POL-REF-005@v2", "POL-SHP-003@v1"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 5900}
+
+- id: SHP-003
+  category: shipping
+  difficulty: medium
+  tags: [lost, window]
+  description: Carrier marked the parcel lost; the order is 90 days old, but the return window does not apply.
+  world:
+    - alias: c1
+      email: wes@example.com
+      name: Wes Young
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 90
+          items:
+            - {sku: WEAR-002, name: Trail running shoes, unit_price_cents: 11900}
+          shipment: {status: lost, carrier: DHL, shipped_days_ago: 88, eta_days_from_now: -80}
+  ticket:
+    sender_email: wes@example.com
+    subject: Lost shoes
+    body: "The carrier lost my shoes from order {o1} a long time ago and I never got a refund."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 11900, status: processed}
+    policy_refs: ["POL-REF-005@v2"]
+    reply_facts: ["return window does not apply to lost shipments"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 11900}
+
+- id: SHP-004
+  category: shipping
+  difficulty: medium
+  tags: [returned_to_sender, refund]
+  description: Parcel bounced back to the sender; it is treated as lost.
+  world:
+    - alias: c1
+      email: xena@example.com
+      name: Xena Zhou
+      country: GB
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 30
+          items:
+            - {sku: KIT-003, name: Pour-over coffee set, unit_price_cents: 5400}
+          shipment: {status: returned, carrier: Royal Mail, shipped_days_ago: 28, eta_days_from_now: -18}
+  ticket:
+    sender_email: xena@example.com
+    subject: Package came back
+    body: "Tracking says order {o1} was returned to the sender. What happens now?"
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 5400, status: processed}
+    policy_refs: ["POL-REF-005@v2", "POL-SHP-006@v1"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 5400}
+
+- id: SHP-005
+  category: shipping
+  difficulty: medium
+  tags: [stuck_label, escalation]
+  description: Label created 7 days ago and the parcel was never collected; fulfillment must follow up.
+  world:
+    - alias: c1
+      email: yan@example.com
+      name: Yan Ito
+      orders:
+        - alias: o1
+          status: placed
+          placed_days_ago: 7
+          items:
+            - {sku: TECH-005, name: Portable SSD 1TB, unit_price_cents: 8900}
+          shipment: {status: label_created, carrier: DHL}
+  ticket:
+    sender_email: yan@example.com
+    subject: Order never left the warehouse
+    body: "Order {o1} was placed a week ago and tracking only says label created."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SHP-003@v1", "POL-ESC-001@v1"]
+    reply_facts: ["passed to the fulfillment team"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
+
+- id: SHP-006
+  category: shipping
+  difficulty: easy
+  tags: [tracking, info]
+  description: Parcel is in transit and on schedule; the customer wants the status.
+  world:
+    - alias: c1
+      email: zed@example.com
+      name: Zed Adler
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 3
+          items:
+            - {sku: FIT-003, name: Resistance band kit, unit_price_cents: 1900}
+          shipment: {status: in_transit, carrier: UPS, shipped_days_ago: 2, eta_days_from_now: 2}
+  ticket:
+    sender_email: zed@example.com
+    subject: Where is my order
+    body: "Can you tell me when order {o1} will arrive?"
+  expected:
+    policy_refs: ["POL-SHP-002@v1", "POL-SHP-001@v2"]
+    reply_facts: ["in transit with UPS", "estimated delivery in 2 days"]
+
+- id: SHP-007
+  category: shipping
+  difficulty: medium
+  tags: [cancellation, escalation]
+  description: Customer wants to cancel an order that has not been dispatched; cancellation is done by a human.
+  world:
+    - alias: c1
+      email: abe@example.com
+      name: Abe Nash
+      orders:
+        - alias: o1
+          status: placed
+          placed_days_ago: 1
+          items:
+            - {sku: HOME-004, name: Bamboo shelf organizer, unit_price_cents: 2900}
+          shipment: {status: label_created, carrier: DHL}
+  ticket:
+    sender_email: abe@example.com
+    subject: Cancel order
+    body: "Please cancel order {o1}, I ordered it by mistake."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SHP-004@v2", "POL-ESC-001@v1"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 2900}
+
+- id: SHP-008
+  category: shipping
+  difficulty: hard
+  tags: [cancellation, stale_policy, denial]
+  description: Customer cites the old policy that allowed cancelling until delivery; the parcel is already in transit.
+  world:
+    - alias: c1
+      email: bea@example.com
+      name: Bea Cole
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 3
+          items:
+            - {sku: WEAR-004, name: Cotton t-shirt 3-pack, unit_price_cents: 3900}
+          shipment: {status: in_transit, carrier: DHL, shipped_days_ago: 2, eta_days_from_now: 3}
+  ticket:
+    sender_email: bea@example.com
+    subject: Cancel order in transit
+    body: "Your policy says orders can be cancelled any time before delivery. Please cancel order {o1} now."
+  expected:
+    policy_refs: ["POL-SHP-004@v2", "POL-GEN-005@v1"]
+    reply_facts: ["cannot be cancelled after dispatch", "return after delivery"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 3900}
+
+- id: SHP-009
+  category: shipping
+  difficulty: hard
+  tags: [damaged, final_sale, escalation]
+  description: A final-sale item arrived damaged; this needs a human review.
+  world:
+    - alias: c1
+      email: cal@example.com
+      name: Cal Reed
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 5
+          items:
+            - {sku: CLR-004, name: Custom-print tote bag, category: final_sale, unit_price_cents: 2200}
+          shipment: {status: delivered, shipped_days_ago: 4, eta_days_from_now: 0, delivered_days_ago: 2}
+  ticket:
+    sender_email: cal@example.com
+    subject: Tote bag arrived torn
+    body: "The custom tote bag from order {o1} arrived with a big tear. I want a refund."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SHP-005@v1", "POL-REF-003@v2"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 2200}
+
+- id: SHP-010
+  category: shipping
+  difficulty: medium
+  tags: [late, regional, denial]
+  description: Turkish customer, Aras Kargo parcel 4 days past estimate; tracking lag is normal.
+  world:
+    - alias: c1
+      email: deniz@example.com
+      name: Deniz Arslan
+      country: TR
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 15
+          items:
+            - {sku: TECH-006, name: Webcam 1080p, unit_price_cents: 5900}
+          shipment: {status: in_transit, carrier: Aras Kargo, shipped_days_ago: 13, eta_days_from_now: -4}
+  ticket:
+    sender_email: deniz@example.com
+    subject: Kargo gecikti
+    body: "Order {o1} has not moved in tracking for two days. I think it is lost, please refund."
+  expected:
+    policy_refs: ["POL-SHP-007@v1", "POL-SHP-003@v1"]
+    reply_facts: ["tracking can lag by 48 hours", "not lost until more than 10 days late"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 5900}
