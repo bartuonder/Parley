@@ -8,6 +8,7 @@ def doc(
     doc_id: str = "POL-REF-001",
     version: int = 1,
     effective: date = date(2026, 1, 1),
+    expires: date | None = None,
     regions: list[Region] | None = None,
     overrides: list[str] | None = None,
     body: str = "## Rule\n\ntext",
@@ -18,6 +19,7 @@ def doc(
         title="A policy",
         version=version,
         effective_date=effective,
+        expires_date=expires,
         category=category,
         regions=regions or [Region.GLOBAL],
         overrides=overrides or [],
@@ -82,3 +84,14 @@ def test_current_docs_filters_by_region() -> None:
     eu_only = doc("POL-REF-002", regions=[Region.EU])
     assert current_docs([eu_only], date(2026, 6, 1), Region.US) == []
     assert current_docs([eu_only], date(2026, 6, 1), Region.EU) == [eu_only]
+
+
+def test_expires_date_must_follow_effective_date() -> None:
+    problems = validate_corpus([doc(expires=date(2026, 1, 1))])
+    assert "POL-REF-001@v1: expires_date must be after effective_date" in problems
+
+
+def test_current_docs_excludes_expired_policies() -> None:
+    promo = doc("POL-PRM-001", effective=date(2025, 11, 15), expires=date(2025, 12, 31))
+    assert current_docs([promo], date(2025, 12, 31)) == [promo]
+    assert current_docs([promo], date(2026, 1, 1)) == []

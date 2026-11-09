@@ -11,6 +11,7 @@ class PolicyCategory(StrEnum):
     BILLING = "billing"
     ESCALATION = "escalation"
     GENERAL = "general"
+    PROMOTIONS = "promotions"
 
 
 class Region(StrEnum):
@@ -27,6 +28,7 @@ class PolicyDoc(BaseModel):
     title: str = Field(min_length=3)
     version: int = Field(ge=1)
     effective_date: date
+    expires_date: date | None = None
     category: PolicyCategory
     regions: list[Region] = Field(default_factory=lambda: [Region.GLOBAL], min_length=1)
     overrides: list[str] = Field(default_factory=list)

@@ -11,6 +11,8 @@ def validate_corpus(docs: list[PolicyDoc]) -> list[str]:
     by_id: dict[str, list[PolicyDoc]] = defaultdict(list)
     for doc in docs:
         by_id[doc.doc_id].append(doc)
+        if doc.expires_date is not None and doc.expires_date <= doc.effective_date:
+            problems.append(f"{doc.key}: expires_date must be after effective_date")
         if "## " not in doc.body:
             problems.append(f"{doc.key}: body has no '## ' section heading")
 
@@ -47,7 +49,8 @@ def current_docs(
     """Latest effective version of each policy that applies to the region on a given date."""
     latest: dict[str, PolicyDoc] = {}
     for doc in docs:
-        if doc.effective_date > as_of or not doc.applies_to(region):
+        expired = doc.expires_date is not None and doc.expires_date < as_of
+        if doc.effective_date > as_of or expired or not doc.applies_to(region):
             continue
         best = latest.get(doc.doc_id)
         if best is None or doc.version > best.version:
