@@ -85,3 +85,83 @@ def test_subscription_and_invoice_reads(session: Session, client: TestClient) ->
     assert [s["id"] for s in subs] == [sub.id]
     assert client.get(f"/customers/{customer.id}/invoices").json() == []
     assert client.get("/invoices/999/refund-eligibility").status_code == 404
+
+
+def refund_body(order_id: int, amount: int = 5000, key: str = "k1") -> dict[str, object]:
+    return {
+        "target": "order",
+        "target_id": order_id,
+        "amount_cents": amount,
+        "reason": "damaged",
+        "idempotency_key": key,
+    }
+
+
+def test_issue_refund_creates_then_replays(session: Session, client: TestClient) -> None:
+    order = delivered_order(session)
+    first = client.post("/refunds", json=refund_body(order.id))
+    second = client.post("/refunds", json=refund_body(order.id))
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert first.json()["id"] == second.json()["id"]
+    assert first.json()["status"] == "processed"
+    assert client.get(f"/orders/{order.id}").json()["status"] == "refunded"
+
+
+def test_refund_with_reused_key_for_other_amount_conflicts(
+    session: Session, client: TestClient
+) -> None:
+    order = delivered_order(session)
+    client.post("/refunds", json=refund_body(order.id, amount=2000))
+    response = client.post("/refunds", json=refund_body(order.id, amount=1000))
+    assert response.status_code == 409
+    assert response.json()["code"] == "idempotency_conflict"
+
+
+def test_ineligible_refund_returns_422_with_reason_code(
+    session: Session, client: TestClient
+) -> None:
+    order = delivered_order(session)
+    client.post("/refunds", json=refund_body(order.id))
+    response = client.post("/refunds", json=refund_body(order.id, amount=100, key="k2"))
+    assert response.status_code == 422
+    assert response.json()["code"] == "already_refunded"
+
+
+def test_refund_amount_above_maximum_returns_422(session: Session, client: TestClient) -> None:
+    order = delivered_order(session)
+    response = client.post("/refunds", json=refund_body(order.id, amount=9999))
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_request"
+
+
+def test_invalid_payload_is_rejected_by_validation(client: TestClient) -> None:
+    body = refund_body(1, amount=-5)
+    assert client.post("/refunds", json=body).status_code == 422
+
+
+def test_large_refund_waits_for_approval_then_can_be_approved(
+    session: Session, client: TestClient
+) -> None:
+    order = delivered_order(session, price=30000)
+    created = client.post("/refunds", json=refund_body(order.id, amount=30000)).json()
+    assert created["status"] == "pending_approval"
+    approved = client.post(f"/refunds/{created['id']}/approve").json()
+    assert approved["status"] == "processed"
+    assert client.post(f"/refunds/{created['id']}/reject").status_code == 422
+
+
+def test_large_refund_can_be_rejected(session: Session, client: TestClient) -> None:
+    order = delivered_order(session, price=30000)
+    created = client.post("/refunds", json=refund_body(order.id, amount=30000)).json()
+    rejected = client.post(f"/refunds/{created['id']}/reject").json()
+    assert rejected["status"] == "rejected"
+
+
+def test_cancel_subscription_endpoint(session: Session, client: TestClient) -> None:
+    sub = make_subscription(session, make_customer(session))
+    first = client.post(f"/subscriptions/{sub.id}/cancel")
+    second = client.post(f"/subscriptions/{sub.id}/cancel")
+    assert first.status_code == second.status_code == 200
+    assert first.json()["cancel_at_period_end"] is True
+    assert client.post("/subscriptions/999/cancel").status_code == 404
