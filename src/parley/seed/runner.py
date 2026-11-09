@@ -1,18 +1,20 @@
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from parley.db.base import Base
-from parley.db.models import Customer, Invoice, Order, Refund, Shipment, Subscription
+from parley.db.models import Customer, Invoice, Order, Refund, Shipment, Subscription, Ticket
+from parley.policies.loader import load_policies
 from parley.seed.config import SeedConfig
 from parley.seed.customers import generate_customers
 from parley.seed.fulfillment import fulfill_orders
 from parley.seed.orders import generate_orders
 from parley.seed.refunds import generate_refunds
 from parley.seed.subscriptions import generate_subscriptions
+from parley.seed.tickets import generate_tickets
 
 
 @dataclass
@@ -23,6 +25,7 @@ class World:
     subscriptions: list[Subscription]
     invoices: list[Invoice]
     refunds: list[Refund]
+    tickets: list[Ticket] = field(default_factory=list)
 
 
 def build_world(cfg: SeedConfig) -> World:
@@ -43,6 +46,16 @@ def seed_database(session: Session, cfg: SeedConfig) -> World:
     reset_database(session)
     world = build_world(cfg)
     session.add_all(world.customers)
+    session.flush()
+    world.tickets = generate_tickets(
+        cfg,
+        world.customers,
+        world.orders,
+        world.subscriptions,
+        world.invoices,
+        load_policies(),
+    )
+    session.add_all(world.tickets)
     session.flush()
     return world
 
@@ -65,4 +78,5 @@ def summarize(world: World) -> dict[str, int]:
         "subscriptions": len(world.subscriptions),
         "invoices": len(world.invoices),
         "refunds": len(world.refunds),
+        "tickets": len(world.tickets),
     }
