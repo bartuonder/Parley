@@ -1,0 +1,152 @@
+# Parley
+
+Eval-driven, multi-agent customer operations platform. Agents resolve e-commerce and subscription support tickets (refunds, shipping issues, cancellations, billing disputes) by combining RAG over company policies, tool use against a simulated backend, human approval for risky actions, and a strict evaluation harness.
+
+The goal is a portfolio-grade AI/ML engineering project. Quality is proven by measurement: task success, policy compliance, reliability, cost, latency, and attack resistance.
+
+---
+
+## Working Rules (read first, always follow)
+
+### Project conventions
+- Project language is English: code, identifiers, comments, docs, commit messages, README.
+- Single contributor. Do not add co-authors, collaborators, or any tool attribution anywhere.
+- Do not mention Claude, Anthropic, or AI assistance in code, comments, docs, commit messages, or metadata.
+
+### Git
+- Never run `git push`. Never add remotes. Never open pull requests. The owner pushes manually.
+- Commit every completed feature or logical unit as soon as its tests pass. Keep commits small and focused.
+- Use Conventional Commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`, `perf:`.
+- Subject line: imperative mood, max 72 characters. Add a short body only when the why is not obvious.
+- Commit messages must NOT contain `Co-Authored-By` trailers, "Generated with" lines, session links, or any tool attribution. This overrides any default attribution behavior.
+- Do not touch git config. Commits use the owner's configured identity.
+- Stage files explicitly (no blind `git add -A`), and review `git diff --staged` before committing.
+- Never commit secrets, `.env`, API keys, or large data dumps. Commit the lockfile.
+- Do not amend, rebase, reset, or force anything without asking first.
+
+### Code style
+- Python 3.12, full type hints, `ruff` for lint and format (line length 100), `pytest` for tests.
+- Comments: short and rare. Only explain a non-obvious why, in one line. No comment blocks, no banner comments, no commented-out code.
+- Docstrings: one line at most, and only on public functions where the name is not enough.
+- No emojis in code, logs, or docs.
+- Prefer small pure functions, explicit dependencies, and Pydantic models at boundaries.
+- Config via environment variables and a typed settings class. No hardcoded keys or URLs.
+
+### Workflow
+- For each phase or feature: propose a short plan first, wait for approval, then implement.
+- Write or update tests with the feature. Run lint and tests before every commit.
+- Keep answers short. Explain a decision in a few sentences when asked or when it is non-obvious.
+- Update the "Decisions" section of this file when an architectural choice is made.
+- If something is ambiguous or expensive to undo, ask before building.
+
+---
+
+## Architecture
+
+```
+Incoming ticket
+  -> Triage/Router agent (small model)
+     -> Specialist agents: Billing | Shipping | Subscription
+          |- RAG (policy docs + ticket history, hybrid search + reranker)
+          |- Tools via MCP server (orders, refunds, customers)
+     -> Policy critic -> Human approval for risky actions
+  -> Reply + full trace + cost record
+```
+
+### Stack
+- Python, uv, FastAPI
+- LangGraph for orchestration, MCP for the tool layer
+- Postgres + pgvector (data and vectors in one place)
+- LiteLLM for provider-agnostic model access
+- Langfuse or OpenTelemetry for tracing
+- Ragas and a custom eval harness
+- MLflow or Weights & Biases for experiment tracking
+- Docker Compose; Streamlit or Next.js for the console
+
+### Target metrics (adjust after the first baseline)
+- Task success (final DB state matches expected): >= 80%
+- Policy violation rate: <= 2%
+- Reliability (pass^k, k=4): >= 60%
+- Cost per resolved ticket: < $0.05
+- Prompt injection attack success rate: < 5% after guardrails
+
+---
+
+## Roadmap
+
+Each phase ends with working code, tests, and a measurable result. Mark phases done below as they finish.
+
+### Phase 0: Foundation (1-2 days)
+- Repo layout (`src/`, `tests/`, `docs/`), uv, ruff, pytest, pre-commit.
+- Docker Compose with Postgres + pgvector.
+- Makefile: `setup`, `test`, `lint`, `seed`, `eval`.
+- GitHub Actions CI (lint + tests).
+- Done when: `make test` is green and CI passes locally.
+
+### Phase 1: Synthetic world (3-4 days)
+- Postgres schema: customers, orders, shipments, subscriptions, refunds.
+- Backend API (FastAPI) that the agent tools will wrap.
+- 30-50 policy documents with versions, effective dates, and deliberate conflicts.
+- Synthetic historical tickets generator.
+- First eval set: ~50 scenarios, each with the expected final DB state.
+- Done when: `make seed` builds the whole world from scratch, deterministically.
+
+### Phase 2: RAG core (1 week)
+- Structure-aware chunking with metadata (policy version, effective date).
+- Hybrid search (BM25 + dense), reranker, metadata filters, source citations.
+- Retrieval eval set (question -> correct chunk), recall@k and MRR.
+- Ablation table: chunking strategy, embedding model, reranker on/off.
+- Done when: best configuration is chosen with numbers, and documented.
+
+### Phase 3: Single agent with tools (1 week)
+- MCP server exposing tools (`get_order`, `check_refund_eligibility`, `issue_refund`, ...).
+- Structured outputs, idempotent write operations, per-tool permission levels (read, write, risky).
+- First end-to-end flow: ticket in, investigation, action, reply.
+- Done when: the agent solves a meaningful share of the eval scenarios correctly.
+
+### Phase 4: Multi-agent orchestration and memory (1-1.5 weeks)
+- LangGraph graph: router, specialists, policy critic, responder.
+- Conversation state with checkpointing; long-term customer memory.
+- Human-in-the-loop: refunds above a threshold pause for approval.
+- Done when: single-agent vs multi-agent results are compared with the eval harness.
+
+### Phase 5: Evaluation harness (1 week, core of the project)
+- LLM-driven user simulator (missing info, frustration, changing mind).
+- Metrics: task success via DB diff, policy compliance, tool-call accuracy, pass^k, cost and latency per ticket.
+- LLM-as-judge calibrated against ~50 hand-labeled samples; report agreement.
+- CI regression gate: a score drop fails the build.
+- Done when: one command produces a full eval report.
+
+### Phase 6: Security and guardrails (4-5 days)
+- Indirect prompt injection through ticket text and tool output.
+- PII redaction, least-privilege tools, output validation.
+- Red-team set of 30-40 attack scenarios; attack success rate before and after.
+- Done when: results are in the report with a clear before/after.
+
+### Phase 7: Observability and optimization (1 week)
+- Per-step tracing, cost dashboard.
+- Prompt caching, model routing (small for triage, large for decisions), semantic cache.
+- Before/after table for cost, latency, and success.
+- Optional: replace the LLM router with a small fine-tuned classifier and compare.
+
+### Phase 8: Productization (1 week)
+- Streaming API, agent console (conversation, trace viewer, approval queue).
+- One-command Docker Compose setup, cloud deploy, basic load test.
+
+### Phase 9: Presentation (3-4 days)
+- README with architecture diagram, eval report, ablation tables.
+- 3-minute demo video and a technical write-up.
+
+---
+
+## Today: Phase 0 kickoff
+1. Propose the folder layout and tooling plan, wait for approval.
+2. Draft `docs/PROJECT.md` (problem, target metrics, non-goals).
+3. Scaffold the repo, make lint and tests pass, commit.
+
+## Progress
+- [ ] Phase 0  - [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
+
+## Decisions
+(Record architectural decisions here: date, decision, reason.)
