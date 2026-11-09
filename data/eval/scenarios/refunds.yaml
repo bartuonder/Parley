@@ -1,0 +1,55 @@
+- id: REF-001
+  category: refund
+  difficulty: easy
+  tags: [window, damaged]
+  description: Delivered 10 days ago, inside the 30-day window, single item.
+  world:
+    - alias: c1
+      email: ada@example.com
+      name: Ada Lovelace
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 14
+          items:
+            - {sku: HOME-001, name: Ceramic desk lamp, unit_price_cents: 4900}
+          shipment: {status: delivered, shipped_days_ago: 13, eta_days_from_now: -8, delivered_days_ago: 10}
+  ticket:
+    sender_email: ada@example.com
+    subject: Damaged lamp
+    body: The ceramic desk lamp from order {o1} arrived cracked. I would like my money back.
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 4900, status: processed}
+    policy_refs: ["POL-REF-001@v2", "POL-REF-006@v1"]
+    reply_facts: ["refund of 49.00 processed"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 4900}
+
+- id: REF-002
+  category: refund
+  difficulty: easy
+  tags: [window, denial]
+  description: Delivered 40 days ago, standard customer, outside the 30-day window.
+  world:
+    - alias: c1
+      email: ben@example.com
+      name: Ben Carter
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 45
+          items:
+            - {sku: WEAR-001, name: Merino wool sweater, unit_price_cents: 8900}
+          shipment: {status: delivered, shipped_days_ago: 44, eta_days_from_now: -38, delivered_days_ago: 40}
+  ticket:
+    sender_email: ben@example.com
+    subject: Return a sweater
+    body: I would like to return the sweater from my order, it does not fit.
+  expected:
+    policy_refs: ["POL-REF-001@v2", "POL-GEN-003@v1"]
+    reply_facts: ["return window of 30 days has passed"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
