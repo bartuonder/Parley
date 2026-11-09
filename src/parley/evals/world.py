@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -182,3 +183,15 @@ def _index_refunds(session: Session, scenario: Scenario, index: WorldIndex) -> N
             index.refunds[r.alias] = session.scalar(
                 select(Refund.id).where(Refund.idempotency_key == key)
             )
+
+
+def render_text(text: str, index: WorldIndex) -> str:
+    """Replace {alias} placeholders with the database ids of the built world."""
+    ids = {
+        **index.customers,
+        **index.orders,
+        **index.invoices,
+        **index.subscriptions,
+        **index.refunds,
+    }
+    return re.sub(r"\{(\w+)\}", lambda m: str(ids[m.group(1)]), text)
