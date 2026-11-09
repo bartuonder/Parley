@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -50,3 +52,10 @@ def test_secret_is_masked(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_get_settings_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
     assert get_settings() is get_settings()
+
+
+def test_fixed_now_defaults_to_none_and_parses(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    assert build().fixed_now is None
+    monkeypatch.setenv("PARLEY_FIXED_NOW", "2026-06-01T12:00:00+00:00")
+    assert build().fixed_now == datetime(2026, 6, 1, 12, 0, tzinfo=UTC)

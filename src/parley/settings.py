@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import lru_cache
 from typing import Literal
 
@@ -17,6 +18,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     database_url: PostgresDsn
     llm_api_key: SecretStr | None = Field(default=None, repr=False)
+    fixed_now: datetime | None = None
 
 
 @lru_cache
