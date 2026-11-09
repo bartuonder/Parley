@@ -58,3 +58,19 @@ class RefundStatus(StrEnum):
     PENDING_APPROVAL = "pending_approval"
     PROCESSED = "processed"
     REJECTED = "rejected"
+
+
+class TicketCategory(StrEnum):
+    REFUND = "refund"
+    SHIPPING = "shipping"
+    SUBSCRIPTION = "subscription"
+    BILLING = "billing"
+    GENERAL = "general"
+
+
+class TicketOutcome(StrEnum):
+    REFUNDED = "refunded"
+    DENIED = "denied"
+    INFO_PROVIDED = "info_provided"
+    ACTION_TAKEN = "action_taken"
+    ESCALATED = "escalated"

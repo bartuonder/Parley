@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from parley.db.base import Base
@@ -15,6 +16,8 @@ from parley.db.enums import (
     ShipmentStatus,
     SubscriptionPlan,
     SubscriptionStatus,
+    TicketCategory,
+    TicketOutcome,
 )
 
 
@@ -158,3 +161,26 @@ class Refund(Base):
         CheckConstraint("amount_cents > 0", name="amount_positive"),
         CheckConstraint("(order_id IS NOT NULL) <> (invoice_id IS NOT NULL)", name="single_target"),
     )
+
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), index=True)
+    invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    subscription_id: Mapped[int | None] = mapped_column(ForeignKey("subscriptions.id"), index=True)
+    category: Mapped[TicketCategory] = mapped_column(enum_col(TicketCategory))
+    outcome: Mapped[TicketOutcome] = mapped_column(enum_col(TicketOutcome))
+    subject: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    resolution: Mapped[str] = mapped_column(Text)
+    policy_refs: Mapped[list[str]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(tstz())
+    resolved_at: Mapped[datetime] = mapped_column(tstz())
+
+    customer: Mapped[Customer] = relationship()
+    order: Mapped[Order | None] = relationship()
+    invoice: Mapped[Invoice | None] = relationship()
+    subscription: Mapped[Subscription | None] = relationship()
