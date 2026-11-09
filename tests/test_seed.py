@@ -1,7 +1,4 @@
-from collections.abc import Iterator
-
-import pytest
-from sqlalchemy import Engine, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from parley.db.enums import (
@@ -16,18 +13,6 @@ from parley.seed.config import SeedConfig
 from parley.seed.runner import build_world, fingerprint, seed_database, summarize
 
 CFG = SeedConfig()
-
-
-@pytest.fixture(scope="module")
-def seeded(engine: Engine) -> Iterator[Session]:
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = Session(connection, expire_on_commit=False)
-    seed_database(session, CFG)
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
 
 
 def test_build_world_is_pure_and_repeatable() -> None:

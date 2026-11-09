@@ -9,6 +9,8 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from parley.db.session import make_engine, to_driver_url
+from parley.seed.config import SeedConfig
+from parley.seed.runner import seed_database
 from parley.settings import get_settings
 
 ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
@@ -48,6 +50,18 @@ def session(engine: Engine) -> Iterator[Session]:
     connection = engine.connect()
     transaction = connection.begin()
     sess = Session(connection, join_transaction_mode="create_savepoint", expire_on_commit=False)
+    yield sess
+    sess.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture(scope="module")
+def seeded(engine: Engine) -> Iterator[Session]:
+    connection = engine.connect()
+    transaction = connection.begin()
+    sess = Session(connection, expire_on_commit=False)
+    seed_database(sess, SeedConfig())
     yield sess
     sess.close()
     transaction.rollback()
