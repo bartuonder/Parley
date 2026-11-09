@@ -38,27 +38,39 @@ def make_order(session: Session, customer: Customer, total_cents: int = 5000) ->
     return order
 
 
-def make_item(session: Session, order: Order) -> OrderItem:
+def make_item(
+    session: Session,
+    order: Order,
+    unit_price_cents: int = 5000,
+    category: ItemCategory = ItemCategory.PHYSICAL,
+) -> OrderItem:
     item = OrderItem(
         order_id=order.id,
         sku="SKU-1",
         name="Desk lamp",
-        category=ItemCategory.PHYSICAL,
+        category=category,
         quantity=1,
-        unit_price_cents=5000,
+        unit_price_cents=unit_price_cents,
     )
     session.add(item)
     session.flush()
     return item
 
 
-def make_shipment(session: Session, order: Order, tracking: str = "TRK-1") -> Shipment:
+def make_shipment(
+    session: Session,
+    order: Order,
+    tracking: str = "TRK-1",
+    status: ShipmentStatus = ShipmentStatus.IN_TRANSIT,
+    delivered_at: datetime | None = None,
+) -> Shipment:
     shipment = Shipment(
         order_id=order.id,
         carrier="DHL",
         tracking_number=tracking,
-        status=ShipmentStatus.IN_TRANSIT,
+        status=status,
         shipped_at=NOW,
+        delivered_at=delivered_at,
     )
     session.add(shipment)
     session.flush()
