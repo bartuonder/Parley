@@ -1,0 +1,198 @@
+- id: BIL-001
+  category: billing
+  difficulty: medium
+  tags: [duplicate, refund]
+  description: Two identical paid invoices on the same day; the later one is refunded.
+  world:
+    - alias: c1
+      email: val@example.com
+      name: Val Stone
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 100, period_end_days_from_now: 18}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 12}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 12}
+  ticket:
+    sender_email: val@example.com
+    subject: Charged twice
+    body: "My card was charged twice for the Pro plan on the same day. Invoices {i1} and {i2}."
+  expected:
+    diff:
+      invoices: {i2: refunded}
+      new_refunds:
+        - {target: i2, amount_cents: 1900, status: processed}
+    policy_refs: ["POL-BIL-001@v2"]
+    reply_facts: ["duplicate charge refunded in full"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 1900}
+
+- id: BIL-002
+  category: billing
+  difficulty: hard
+  tags: [duplicate, which_charge]
+  description: Customer points at the first invoice of a duplicate pair; the later invoice is the one to refund.
+  world:
+    - alias: c1
+      email: wyn@example.com
+      name: Wyn Park
+      subscriptions:
+        - {alias: s1, plan: basic, interval: monthly, status: active, price_cents: 900, started_days_ago: 80, period_end_days_from_now: 10}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 900, issued_days_ago: 20}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 900, issued_days_ago: 20}
+  ticket:
+    sender_email: wyn@example.com
+    subject: Please refund invoice 1
+    body: "I was billed twice. Please refund invoice {i1}, the first one."
+  expected:
+    diff:
+      invoices: {i2: refunded}
+      new_refunds:
+        - {target: i2, amount_cents: 900, status: processed}
+    policy_refs: ["POL-BIL-001@v2"]
+    reply_facts: ["the later invoice is refunded, the earlier is the valid charge"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 900}
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 900}
+
+- id: BIL-003
+  category: billing
+  difficulty: medium
+  tags: [dispute, escalation]
+  description: Invoice is under a bank dispute; no refund, hand over to the disputes team.
+  world:
+    - alias: c1
+      email: xan@example.com
+      name: Xan Moore
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 70, period_end_days_from_now: 8}
+      invoices:
+        - {alias: i1, subscription: s1, status: disputed, amount_cents: 1900, issued_days_ago: 15}
+  ticket:
+    sender_email: xan@example.com
+    subject: Refund the disputed charge
+    body: "I opened a dispute with my bank for invoice {i1}, but I also want you to refund it directly."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-BIL-003@v1", "POL-ESC-001@v1"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: BIL-004
+  category: billing
+  difficulty: easy
+  tags: [failed_payment, denial]
+  description: Invoice failed, so nothing was collected; there is nothing to refund.
+  world:
+    - alias: c1
+      email: yuri@example.com
+      name: Yuri Sato
+      subscriptions:
+        - {alias: s1, plan: basic, interval: monthly, status: past_due, price_cents: 900, started_days_ago: 50, period_end_days_from_now: 2}
+      invoices:
+        - {alias: i1, subscription: s1, status: failed, amount_cents: 900, issued_days_ago: 1}
+  ticket:
+    sender_email: yuri@example.com
+    subject: Refund for a failed payment
+    body: "Invoice {i1} shows failed but I see a pending hold on my card. Refund it please."
+  expected:
+    policy_refs: ["POL-BIL-002@v1"]
+    reply_facts: ["failed invoice means no charge", "bank holds usually disappear within days"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 900}
+
+- id: BIL-005
+  category: billing
+  difficulty: medium
+  tags: [duplicate, not_duplicate, denial]
+  description: Customer calls two monthly charges a month apart duplicates; they are separate billing periods.
+  world:
+    - alias: c1
+      email: zoe@example.com
+      name: Zoe Hunt
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 90, period_end_days_from_now: 27}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 33}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 3}
+  ticket:
+    sender_email: zoe@example.com
+    subject: Double billing
+    body: "I see two charges of 19.00, invoices {i1} and {i2}. Please refund the second one."
+  expected:
+    policy_refs: ["POL-BIL-001@v2", "POL-SUB-001@v2"]
+    reply_facts: ["charges are for different billing periods"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 1900}
+
+- id: BIL-006
+  category: billing
+  difficulty: hard
+  tags: [duplicate, stale_policy, denial]
+  description: Two equal charges are 2 days apart; the duplicate rule needs them within 24 hours.
+  world:
+    - alias: c1
+      email: abby@example.com
+      name: Abby Cruz
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: active, price_cents: 4900, started_days_ago: 40, period_end_days_from_now: 20}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 4.5}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 2.5}
+  ticket:
+    sender_email: abby@example.com
+    subject: Charged twice this week
+    body: "Invoices {i1} and {i2} are the same amount and only two days apart. That is a duplicate, refund {i2}."
+  expected:
+    policy_refs: ["POL-BIL-001@v2"]
+    reply_facts: ["duplicates must be within 24 hours"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 4900}
+
+- id: BIL-007
+  category: billing
+  difficulty: easy
+  tags: [vat, escalation]
+  description: EU customer wants a VAT number on an invoice; a human adds company details.
+  world:
+    - alias: c1
+      email: bruno@example.com
+      name: Bruno Keller
+      country: DE
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: active, price_cents: 4900, started_days_ago: 45, period_end_days_from_now: 15}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 14}
+  ticket:
+    sender_email: bruno@example.com
+    subject: VAT number on invoice
+    body: "Please add our company name and VAT number DE123456789 to invoice {i1}."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-BIL-004@v1", "POL-ESC-001@v1"]
+
+- id: BIL-008
+  category: billing
+  difficulty: easy
+  tags: [already_refunded, denial]
+  description: Invoice was already refunded; the customer asks again.
+  world:
+    - alias: c1
+      email: cleo@example.com
+      name: Cleo Dunn
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 100, period_end_days_from_now: 22}
+      invoices:
+        - {alias: i1, subscription: s1, status: refunded, amount_cents: 1900, issued_days_ago: 9}
+      refunds:
+        - {alias: r1, invoice: i1, amount_cents: 1900, status: processed, reason: duplicate charge, created_days_ago: 6}
+  ticket:
+    sender_email: cleo@example.com
+    subject: Refund invoice again
+    body: "I still see invoice {i1} on my statement. Please refund it."
+  expected:
+    policy_refs: ["POL-BIL-005@v1", "POL-REF-009@v1"]
+    reply_facts: ["already refunded on a previous date", "5 to 10 business days"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
