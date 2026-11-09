@@ -130,6 +130,7 @@ class Invoice(Base):
     currency: Mapped[str] = mapped_column(String(3))
     issued_at: Mapped[datetime] = mapped_column(tstz())
 
+    customer: Mapped[Customer] = relationship()
     subscription: Mapped[Subscription | None] = relationship(back_populates="invoices")
     refunds: Mapped[list["Refund"]] = relationship(back_populates="invoice")
 
