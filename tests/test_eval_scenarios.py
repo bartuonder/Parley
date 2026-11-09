@@ -4,9 +4,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from parley.backend.services import Backend
+from parley.db.enums import TicketCategory
 from parley.evals.actions import apply_all, is_refused
 from parley.evals.loader import load_scenarios
-from parley.evals.schema import Scenario
+from parley.evals.schema import Scenario, StateDiff
 from parley.evals.state import diff_snapshots, normalize, take_snapshot
 from parley.evals.world import build_world, render_text
 from parley.policies.loader import load_policies
@@ -65,3 +66,31 @@ def test_ticket_placeholders_resolve_to_database_ids(scenario: Scenario, session
         assert text.strip()
         rendered = render_text(text, index)
         assert "{" not in rendered and "}" not in rendered
+
+
+def tagged(tag: str) -> list[Scenario]:
+    return [s for s in SCENARIOS if tag in s.tags]
+
+
+def test_eval_set_size_and_category_coverage() -> None:
+    assert len(SCENARIOS) >= 50
+    assert {s.category for s in SCENARIOS} == set(TicketCategory)
+    assert {s.difficulty for s in SCENARIOS} == {"easy", "medium", "hard"}
+
+
+@pytest.mark.parametrize(
+    "tag",
+    ["approval", "escalation", "stale_policy", "adversarial", "denial", "final_sale", "duplicate"],
+)
+def test_eval_set_covers_tag(tag: str) -> None:
+    assert len(tagged(tag)) >= 3
+
+
+def test_eval_set_mixes_actions_and_non_actions() -> None:
+    with_state_change = [s for s in SCENARIOS if s.expected.diff != StateDiff()]
+    assert 15 <= len(with_state_change) <= len(SCENARIOS) - 15
+    assert any(s.expected.requires_human for s in SCENARIOS)
+
+
+def test_every_scenario_states_its_policy_basis() -> None:
+    assert all(s.expected.policy_refs for s in SCENARIOS)
