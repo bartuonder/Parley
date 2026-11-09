@@ -8,6 +8,23 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: parley
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: parley
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U parley -d parley"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PARLEY_ENV: test
+      PARLEY_DATABASE_URL: postgresql://parley:ci-password@localhost:5432/parley
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
