@@ -150,3 +150,10 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ## Decisions
 (Record architectural decisions here: date, decision, reason.)
+
+- 2026-11-09: src layout with `hatchling` build backend. Keeps imports honest (tests run against the installed package).
+- 2026-11-09: Python pinned to 3.12 (`>=3.12,<3.13`) to match the project standard.
+- 2026-11-09: Config via `pydantic-settings` with `PARLEY_` env prefix. `database_url` has no default so a missing config fails loudly instead of connecting to a guessed host.
+- 2026-11-09: pre-commit runs ruff through `uv run` (local hooks) so the ruff version always matches `uv.lock`.
+- 2026-11-09: Postgres image `pgvector/pgvector:pg16`; the `vector` extension is created by `docker/postgres/init.sql` on first start. Compose requires `POSTGRES_PASSWORD` so no default credential is baked in.
+- 2026-11-09: Dependencies are added per phase. Only `pydantic` and `pydantic-settings` for now.
