@@ -1,4 +1,4 @@
-.PHONY: setup test lint format seed eval up down
+.PHONY: setup test lint format migrate seed eval up down
 
 setup:
 	uv sync
@@ -22,8 +22,11 @@ up:
 down:
 	docker compose down
 
-seed:
-	@echo "seed: not implemented yet (Phase 1)"
+migrate:
+	uv run alembic upgrade head
+
+seed: up migrate
+	uv run python -m parley.seed
 
 eval:
 	@echo "eval: not implemented yet (Phase 5)"
