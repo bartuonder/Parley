@@ -145,7 +145,7 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 3. Scaffold the repo, make lint and tests pass, commit.
 
 ## Progress
-- [x] Phase 0  - [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 0  - [x] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
 - [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
@@ -156,4 +156,12 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-09: Config via `pydantic-settings` with `PARLEY_` env prefix. `database_url` has no default so a missing config fails loudly instead of connecting to a guessed host.
 - 2026-11-09: pre-commit runs ruff through `uv run` (local hooks) so the ruff version always matches `uv.lock`.
 - 2026-11-09: Postgres image `pgvector/pgvector:pg16`; the `vector` extension is created by `docker/postgres/init.sql` on first start. Compose requires `POSTGRES_PASSWORD` so no default credential is baked in.
-- 2026-11-09: Dependencies are added per phase. Only `pydantic` and `pydantic-settings` for now.
+- 2026-11-09: Dependencies are added per phase, when the code that needs them lands.
+- 2026-11-09: SQLAlchemy 2.0 with psycopg 3 and Alembic. Constraints are named through a metadata naming convention so migrations stay stable. Money is stored as integer cents.
+- 2026-11-09: The synthetic world is pinned to a reference date (2026-06-01) through `PARLEY_FIXED_NOW`; no code in the seed path reads the wall clock. Each generator uses its own RNG stream so changing one does not reshuffle the others.
+- 2026-11-09: Business rules live in `backend/rules.py` and are the eval oracle. Policy documents must agree with them as of the reference date; a test ties the numbers together. Regional policies never change an outcome, so the rules are region-independent.
+- 2026-11-09: Refunds are idempotent by key, pending-approval refunds reserve their amount, and approval is a separate step. The API commits explicitly instead of relying on dependency exit timing.
+- 2026-11-09: Policies are Markdown with YAML frontmatter (`doc_id`, `version`, `effective_date`, optional `expires_date`, `regions`, `overrides`). Conflicts are deliberate and listed in `docs/POLICY_CONFLICTS.md`.
+- 2026-11-09: Historical tickets are template-based, not LLM-generated, so they are free and reproducible. They cite the policy version in force on the ticket date.
+- 2026-11-09: Eval scenarios define their own minimal world instead of pointing at seed ids, so regenerating the seed never breaks them. Each scenario carries a reference solution and forbidden actions, and the tests verify both against the backend oracle.
+
