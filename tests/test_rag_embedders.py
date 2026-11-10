@@ -7,6 +7,7 @@ from parley.policies.loader import load_policies
 from parley.rag.chunking import ChunkStrategy
 from parley.rag.embedders import HashEmbedder, get_embedder
 from parley.rag.indexing import build_index
+from parley.rag.rerankers import OverlapReranker, get_reranker
 from parley.rag.store import load_chunks, load_embeddings
 
 
@@ -66,3 +67,22 @@ def test_real_model_ranks_a_relevant_passage_above_an_unrelated_one() -> None:
     query = embedder.embed_query("how long do I have to send an item back?")
     assert len(query) == 384
     assert cosine(query, docs[0]) > cosine(query, docs[1])
+
+
+def test_embedders_are_loaded_once_per_name() -> None:
+    assert get_embedder("hash-48") is get_embedder("hash-48")
+    assert get_embedder("hash-48") is not get_embedder("hash-49")
+
+
+def test_reranker_is_loaded_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    loads: list[int] = []
+
+    class FakeCrossEncoder(OverlapReranker):
+        def __init__(self) -> None:
+            loads.append(1)
+
+    get_reranker.cache_clear()
+    monkeypatch.setattr("parley.rag.rerankers.CrossEncoderReranker", FakeCrossEncoder)
+    assert get_reranker() is get_reranker()
+    assert len(loads) == 1
+    get_reranker.cache_clear()

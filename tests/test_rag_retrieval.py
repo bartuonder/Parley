@@ -128,3 +128,14 @@ def test_rrf_scores_an_item_missing_from_one_ranker_lower() -> None:
     fused = reciprocal_rank_fusion([["a", "b"], ["b", "c"]])
     assert fused["b"] > fused["a"]
     assert fused["b"] > fused["c"]
+
+
+def test_query_vector_cache_is_bounded_and_evicts_the_oldest(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("parley.rag.retrieval.QUERY_CACHE_SIZE", 2)
+    build_index(session, DOCS, ChunkStrategy.SECTION, [EMBEDDER])
+    retriever = Retriever(session, ChunkStrategy.SECTION, EMBEDDER)
+    for query in ("first query", "second query", "third query"):
+        retriever.search(query, mode=Mode.DENSE)
+    assert list(retriever._query_vectors) == ["second query", "third query"]
