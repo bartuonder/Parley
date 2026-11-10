@@ -168,4 +168,3 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-10: Retrieval relevance is defined by policy version plus an evidence sentence, never by chunk id, so the same labels work across chunking strategies. Selection uses doc-level metrics because passage-level ones favor coarse chunks.
 - 2026-11-10: Chosen RAG configuration is section chunks, MiniLM, dense search, cross-encoder rerank (20 candidates, top 5). Gaps of one dev question count as ties, and ties go to the cheapest option. The as-of metadata filter is always on; it removes 25% stale hits from the top five.
 - 2026-11-10: RAG index tables are excluded from the seed reset and fingerprint, so `make seed` never wipes an index. Reindex with `make rag-index`.
-
