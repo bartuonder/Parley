@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval api up down
+.PHONY: setup test lint format migrate seed eval api rag-eval up down
 
 setup:
 	uv sync
@@ -33,3 +33,6 @@ eval:
 
 api:
 	uv run uvicorn parley.backend.api:create_app --factory --reload
+
+rag-eval: up migrate
+	uv run python -m parley.rag.ablation
