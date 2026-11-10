@@ -40,3 +40,4 @@ rag-index: up migrate
 
 rag-eval: up migrate
 	uv run python -m parley.rag.ablation
+	uv run python -m parley.rag
