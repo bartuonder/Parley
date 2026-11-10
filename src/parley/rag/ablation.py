@@ -1,7 +1,7 @@
 import argparse
 import json
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -61,7 +61,7 @@ def run_ablation(
     session: Session,
     docs: list[PolicyDoc],
     questions: list[Question],
-    embedders: dict[str, Embedder],
+    embedders: Mapping[str, Embedder],
     reranker: Reranker,
 ) -> list[Row]:
     dev = [q for q in questions if q.split == "dev"]
@@ -77,15 +77,14 @@ def run_ablation(
                     continue
                 label = NO_EMBEDDER if mode == Mode.BM25 else name
                 for rerank in (False, True):
-                    kwargs = {"mode": mode, "rerank": rerank}
                     rows.append(
                         Row(
                             strategy=strategy,
                             embedding=label,
                             mode=mode,
                             rerank=rerank,
-                            dev=evaluate(retriever, dev, **kwargs),
-                            test=evaluate(retriever, test, **kwargs),
+                            dev=evaluate(retriever, dev, mode=mode, rerank=rerank),
+                            test=evaluate(retriever, test, mode=mode, rerank=rerank),
                         )
                     )
     return rows
@@ -120,17 +119,17 @@ def measure_filter_effect(
     docs: list[PolicyDoc],
     questions: list[Question],
     row: Row,
-    embedders: dict[str, Embedder],
+    embedders: Mapping[str, Embedder],
     reranker: Reranker,
 ) -> FilterEffect:
     embedder = embedders.get(row.embedding) or next(iter(embedders.values()))
     build_index(session, docs, row.strategy, [embedder])
     retriever = Retriever(session, row.strategy, embedder, reranker)
     test = [q for q in questions if q.split == "test"]
-    kwargs = {"mode": row.mode, "rerank": row.rerank}
+    mode, rerank = row.mode, row.rerank
     return FilterEffect(
-        with_filter=evaluate(retriever, test, **kwargs),
-        without_filter=evaluate(retriever, test, use_filter=False, **kwargs),
+        with_filter=evaluate(retriever, test, mode=mode, rerank=rerank),
+        without_filter=evaluate(retriever, test, mode=mode, rerank=rerank, use_filter=False),
     )
 
 

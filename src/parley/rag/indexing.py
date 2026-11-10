@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from sqlalchemy.orm import Session
 
 from parley.policies.models import PolicyDoc
@@ -10,7 +12,7 @@ def build_index(
     session: Session,
     docs: list[PolicyDoc],
     strategy: ChunkStrategy,
-    embedders: list[Embedder],
+    embedders: Sequence[Embedder],
 ) -> int:
     """Chunk the corpus, store the chunks, and store one vector set per embedder."""
     chunks = chunk_corpus(docs, strategy)

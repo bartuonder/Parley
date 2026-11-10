@@ -180,9 +180,8 @@ def _index_refunds(session: Session, scenario: Scenario, index: WorldIndex) -> N
     for spec in scenario.world:
         for r in spec.refunds:
             key = f"{scenario.id}-seed-{r.alias}"
-            index.refunds[r.alias] = session.scalar(
-                select(Refund.id).where(Refund.idempotency_key == key)
-            )
+            stmt = select(Refund.id).where(Refund.idempotency_key == key)
+            index.refunds[r.alias] = session.execute(stmt).scalar_one()
 
 
 def render_text(text: str, index: WorldIndex) -> str:

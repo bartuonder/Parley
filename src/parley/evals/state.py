@@ -28,16 +28,21 @@ def take_snapshot(session: Session, index: WorldIndex) -> Snapshot:
     order_alias = {v: k for k, v in index.orders.items()}
     invoice_alias = {v: k for k, v in index.invoices.items()}
 
-    orders = {a: session.get(Order, i).status for a, i in index.orders.items()}
-    invoices = {a: session.get(Invoice, i).status for a, i in index.invoices.items()}
+    orders = {a: session.get_one(Order, i).status for a, i in index.orders.items()}
+    invoices = {a: session.get_one(Invoice, i).status for a, i in index.invoices.items()}
     subscriptions = {}
     for alias, sub_id in index.subscriptions.items():
-        sub = session.get(Subscription, sub_id)
+        sub = session.get_one(Subscription, sub_id)
         subscriptions[alias] = SubState(sub.status, sub.cancel_at_period_end)
 
     refunds: dict[int, tuple[str, int, RefundStatus]] = {}
     for refund in session.scalars(select(Refund)):
-        target = order_alias.get(refund.order_id) or invoice_alias.get(refund.invoice_id)
+        if refund.order_id is not None:
+            target = order_alias.get(refund.order_id)
+        elif refund.invoice_id is not None:
+            target = invoice_alias.get(refund.invoice_id)
+        else:
+            target = None
         if target is not None:
             refunds[refund.id] = (target, refund.amount_cents, refund.status)
     return Snapshot(orders, invoices, subscriptions, refunds)
