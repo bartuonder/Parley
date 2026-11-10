@@ -5,46 +5,10 @@ from rank_bm25 import BM25Okapi
 
 WORD = re.compile(r"[a-z0-9]+")
 STOPWORDS = frozenset(
-    [
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "by",
-        "can",
-        "for",
-        "from",
-        "has",
-        "have",
-        "i",
-        "if",
-        "in",
-        "is",
-        "it",
-        "its",
-        "my",
-        "of",
-        "on",
-        "or",
-        "that",
-        "the",
-        "their",
-        "there",
-        "this",
-        "to",
-        "was",
-        "we",
-        "what",
-        "when",
-        "which",
-        "will",
-        "with",
-        "you",
-        "your",
-    ]
+    (  # noqa: SIM905
+        "a an and are as at be by can for from has have i if in is it its my of on or that the "
+        "their there this to was we what when which will with you your"
+    ).split()
 )
 _STEMMER = SnowballStemmer("english")
 
