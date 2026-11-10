@@ -4,8 +4,8 @@ from enum import StrEnum
 from parley.policies.models import PolicyDoc
 from parley.rag.models import Chunk
 
-WINDOW_WORDS = 80
-OVERLAP_WORDS = 20
+WINDOW_WORDS = 40
+OVERLAP_WORDS = 10
 SECTION_SPLIT = re.compile(r"(?m)^## ")
 
 
