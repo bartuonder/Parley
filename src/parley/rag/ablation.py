@@ -14,7 +14,7 @@ from parley.rag.chunking import ChunkStrategy, chunk_corpus
 from parley.rag.embedders import MODEL_REGISTRY, Embedder, HashEmbedder, get_embedder
 from parley.rag.evaluation import Metrics, Question, evaluate, load_questions
 from parley.rag.indexing import build_index
-from parley.rag.rerankers import CrossEncoderReranker, OverlapReranker, Reranker
+from parley.rag.rerankers import OverlapReranker, Reranker, get_reranker
 from parley.rag.retrieval import Mode, Retriever
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -257,7 +257,7 @@ def main() -> None:
         reranker = OverlapReranker()
     else:
         embedders = {alias: get_embedder(alias) for alias in MODEL_REGISTRY}
-        reranker = CrossEncoderReranker()
+        reranker = get_reranker()
 
     with session_scope(make_engine()) as session:
         rows = run_ablation(session, docs, questions, embedders, reranker)

@@ -1,3 +1,4 @@
+from functools import cache
 from pathlib import Path
 from typing import Protocol
 
@@ -29,3 +30,9 @@ class CrossEncoderReranker:
 
     def score(self, query: str, texts: list[str]) -> list[float]:
         return [float(s) for s in self._model.rerank(query, texts)]
+
+
+@cache
+def get_reranker() -> Reranker:
+    """Load the cross-encoder once per process."""
+    return CrossEncoderReranker()

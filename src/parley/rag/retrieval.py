@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from enum import StrEnum
 
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ from parley.rag.store import load_chunks
 from parley.rag.tables import ChunkEmbeddingRow, ChunkRow
 
 RRF_K = 60
+QUERY_CACHE_SIZE = 1024
 
 
 class Mode(StrEnum):
@@ -55,7 +57,7 @@ class Retriever:
         self.chunks = load_chunks(session, strategy)
         self._by_id = {c.chunk_id: c for c in self.chunks}
         self._bm25 = BM25Index([c.text for c in self.chunks])
-        self._query_vectors: dict[str, list[float]] = {}
+        self._query_vectors: OrderedDict[str, list[float]] = OrderedDict()
 
     def search(
         self,
@@ -125,4 +127,6 @@ class Retriever:
     def _query_vector(self, query: str) -> list[float]:
         if query not in self._query_vectors:
             self._query_vectors[query] = self.embedder.embed_query(query)
+            while len(self._query_vectors) > QUERY_CACHE_SIZE:
+                self._query_vectors.popitem(last=False)
         return self._query_vectors[query]

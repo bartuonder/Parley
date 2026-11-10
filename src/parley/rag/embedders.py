@@ -1,6 +1,7 @@
 import hashlib
 import math
 import re
+from functools import cache
 from pathlib import Path
 from typing import Protocol
 
@@ -60,7 +61,9 @@ class FastEmbedder:
         return next(iter(self._model.query_embed(text))).tolist()
 
 
+@cache
 def get_embedder(name: str) -> Embedder:
+    """Load an embedder once per process; loading a real model takes seconds."""
     if name.startswith("hash-"):
         return HashEmbedder(int(name.removeprefix("hash-")))
     if name not in MODEL_REGISTRY:

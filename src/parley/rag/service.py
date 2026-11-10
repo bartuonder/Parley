@@ -8,7 +8,7 @@ from parley.rag.chunking import ChunkStrategy
 from parley.rag.embedders import Embedder, get_embedder
 from parley.rag.filters import SearchFilter
 from parley.rag.indexing import build_index
-from parley.rag.rerankers import CrossEncoderReranker, Reranker
+from parley.rag.rerankers import Reranker, get_reranker
 from parley.rag.retrieval import Hit, Mode, Retriever
 
 DEFAULT_STRATEGY = ChunkStrategy.SECTION
@@ -37,7 +37,7 @@ def default_retriever(
         session,
         DEFAULT_STRATEGY,
         embedder or get_embedder(DEFAULT_EMBEDDING),
-        reranker or CrossEncoderReranker(),
+        reranker or get_reranker(),
     )
 
 
