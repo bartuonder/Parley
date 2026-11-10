@@ -117,6 +117,20 @@ def test_miss_scores_zero_and_stale_hits_are_counted() -> None:
     assert result.stale_rate == 1.0
 
 
+def test_doc_level_metrics_ignore_the_evidence_sentence() -> None:
+    wrong_passage = make_chunk(text="other words from the right policy version")
+    result = score_question(question(GOLD), hits_of(wrong_passage), set())
+    assert result.recall_at[5] == 0.0
+    assert result.doc_recall_at_3 == 1.0
+    assert result.doc_reciprocal_rank == 1.0
+
+
+def test_context_words_count_the_top_three_chunks() -> None:
+    chunks = [make_chunk(text="a b c"), make_chunk(text="d e"), make_chunk(text="f"), make_chunk()]
+    result = score_question(question(GOLD), hits_of(*chunks), set())
+    assert result.context_words == 6
+
+
 def test_no_hits_scores_zero_without_dividing_by_zero() -> None:
     result = score_question(question(GOLD), [], set())
     assert result.recall_at[5] == 0.0

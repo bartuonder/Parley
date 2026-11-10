@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -56,27 +57,45 @@ def is_relevant(chunk: Chunk, gold: Gold) -> bool:
     return chunk.doc_key == gold.doc and normalize(gold.evidence) in normalize(chunk.text)
 
 
+def is_doc_relevant(chunk: Chunk, gold: Gold) -> bool:
+    """Granularity-neutral relevance: the chunk comes from the gold policy version."""
+    return chunk.doc_key == gold.doc
+
+
 @dataclass(frozen=True)
 class QuestionScore:
     recall_at: dict[int, float]
     reciprocal_rank: float
     stale_rate: float
+    doc_recall_at_3: float
+    doc_reciprocal_rank: float
+    context_words: int
+
+
+def _reciprocal_rank(hits: list[Hit], question: Question, relevant: Callable[..., bool]) -> float:
+    for hit in hits[:SEARCH_DEPTH]:
+        if any(relevant(hit.chunk, g) for g in question.gold):
+            return 1.0 / hit.rank
+    return 0.0
+
+
+def _recall(hits: list[Hit], question: Question, k: int, relevant: Callable[..., bool]) -> float:
+    top = [h.chunk for h in hits[:k]]
+    found = sum(any(relevant(c, g) for c in top) for g in question.gold)
+    return found / len(question.gold)
 
 
 def score_question(question: Question, hits: list[Hit], in_force: set[str]) -> QuestionScore:
-    recall_at = {}
-    for k in (1, 3, 5):
-        top = [h.chunk for h in hits[:k]]
-        found = sum(any(is_relevant(c, g) for c in top) for g in question.gold)
-        recall_at[k] = found / len(question.gold)
-    reciprocal_rank = 0.0
-    for hit in hits[:SEARCH_DEPTH]:
-        if any(is_relevant(hit.chunk, g) for g in question.gold):
-            reciprocal_rank = 1.0 / hit.rank
-            break
     top = hits[:STALE_DEPTH]
     stale = sum(h.chunk.doc_key not in in_force for h in top) / len(top) if top else 0.0
-    return QuestionScore(recall_at, reciprocal_rank, stale)
+    return QuestionScore(
+        recall_at={k: _recall(hits, question, k, is_relevant) for k in (1, 3, 5)},
+        reciprocal_rank=_reciprocal_rank(hits, question, is_relevant),
+        stale_rate=stale,
+        doc_recall_at_3=_recall(hits, question, 3, is_doc_relevant),
+        doc_reciprocal_rank=_reciprocal_rank(hits, question, is_doc_relevant),
+        context_words=sum(len(h.chunk.text.split()) for h in hits[:3]),
+    )
 
 
 class Metrics(BaseModel):
@@ -86,6 +105,9 @@ class Metrics(BaseModel):
     recall_at_5: float
     mrr: float
     stale_rate: float
+    doc_recall_at_3: float = 0.0
+    doc_mrr: float = 0.0
+    context_words: float = 0.0
 
 
 def aggregate(scores: list[QuestionScore]) -> Metrics:
@@ -101,6 +123,9 @@ def aggregate(scores: list[QuestionScore]) -> Metrics:
         recall_at_5=mean([s.recall_at[5] for s in scores]),
         mrr=mean([s.reciprocal_rank for s in scores]),
         stale_rate=mean([s.stale_rate for s in scores]),
+        doc_recall_at_3=mean([s.doc_recall_at_3 for s in scores]),
+        doc_mrr=mean([s.doc_reciprocal_rank for s in scores]),
+        context_words=mean([float(s.context_words) for s in scores]),
     )
 
 
