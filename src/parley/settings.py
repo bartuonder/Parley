@@ -1,16 +1,18 @@
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, PostgresDsn, SecretStr
+from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="PARLEY_",
-        env_file=".env",
+        env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -20,7 +22,18 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     llm_api_key: SecretStr | None = Field(default=None, repr=False)
     fixed_now: datetime | None = None
-    model_cache_dir: Path = Path(".cache/models")
+    model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
+
+    @field_validator("model_cache_dir")
+    @classmethod
+    def anchor_to_project_root(cls, value: Path) -> Path:
+        return value if value.is_absolute() else PROJECT_ROOT / value
+
+    @model_validator(mode="after")
+    def no_pinned_clock_in_prod(self) -> Self:
+        if self.env == "prod" and self.fixed_now is not None:
+            raise ValueError("PARLEY_FIXED_NOW must not be set when PARLEY_ENV is prod")
+        return self
 
 
 @lru_cache
