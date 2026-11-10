@@ -43,7 +43,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -m 'not model'"
+markers = ["model: downloads and runs real embedding models (run with -m model)"]
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*" = ["E501"]

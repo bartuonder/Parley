@@ -1,5 +1,6 @@
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, PostgresDsn, SecretStr
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     llm_api_key: SecretStr | None = Field(default=None, repr=False)
     fixed_now: datetime | None = None
+    model_cache_dir: Path = Path(".cache/models")
 
 
 @lru_cache
