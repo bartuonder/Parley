@@ -20,7 +20,7 @@ make rag-eval    # rerun the full ablation and rewrite RAG_ABLATION.md
 
 ```python
 hits = search_policies(default_retriever(session), question, as_of=date(2026, 6, 1))
-format_context(hits)   # numbered passages, each with its citation and effective date
+format_context(hits)  # numbered passages, each with its citation and effective date
 ```
 
 ## What was built
