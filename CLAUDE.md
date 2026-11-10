@@ -145,7 +145,7 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 3. Scaffold the repo, make lint and tests pass, commit.
 
 ## Progress
-- [x] Phase 0  - [x] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
 - [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
@@ -164,4 +164,8 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-09: Policies are Markdown with YAML frontmatter (`doc_id`, `version`, `effective_date`, optional `expires_date`, `regions`, `overrides`). Conflicts are deliberate and listed in `docs/POLICY_CONFLICTS.md`.
 - 2026-11-09: Historical tickets are template-based, not LLM-generated, so they are free and reproducible. They cite the policy version in force on the ticket date.
 - 2026-11-09: Eval scenarios define their own minimal world instead of pointing at seed ids, so regenerating the seed never breaks them. Each scenario carries a reference solution and forbidden actions, and the tests verify both against the backend oracle.
+- 2026-11-10: RAG runs on local ONNX models (`fastembed`), so retrieval work needs no API key and every run is free and repeatable. Vectors live in pgvector with a dimension-free column and no ANN index; at this corpus size an exact scan is instant.
+- 2026-11-10: Retrieval relevance is defined by policy version plus an evidence sentence, never by chunk id, so the same labels work across chunking strategies. Selection uses doc-level metrics because passage-level ones favor coarse chunks.
+- 2026-11-10: Chosen RAG configuration is section chunks, MiniLM, dense search, cross-encoder rerank (20 candidates, top 5). Gaps of one dev question count as ties, and ties go to the cheapest option. The as-of metadata filter is always on; it removes 25% stale hits from the top five.
+- 2026-11-10: RAG index tables are excluded from the seed reset and fingerprint, so `make seed` never wipes an index. Reindex with `make rag-index`.
 
