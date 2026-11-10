@@ -9,7 +9,7 @@ from parley.rag.embedders import HashEmbedder
 from parley.rag.filters import SearchFilter
 from parley.rag.indexing import build_index
 from parley.rag.rerankers import OverlapReranker
-from parley.rag.retrieval import Mode, Retriever, reciprocal_rank_fusion
+from parley.rag.retrieval import Hit, Mode, Retriever, reciprocal_rank_fusion
 
 EMBEDDER = HashEmbedder(256)
 JUNE = date(2026, 6, 1)
@@ -50,7 +50,7 @@ def retriever(session: Session) -> Retriever:
     return Retriever(session, ChunkStrategy.SECTION, EMBEDDER, OverlapReranker())
 
 
-def top_docs(hits) -> list[str]:
+def top_docs(hits: list[Hit]) -> list[str]:
     return [h.chunk.doc_key for h in hits]
 
 

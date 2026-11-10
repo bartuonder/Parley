@@ -13,7 +13,7 @@ from parley.rag.ablation import (
 )
 from parley.rag.chunking import ChunkStrategy
 from parley.rag.embedders import HashEmbedder
-from parley.rag.evaluation import Metrics, load_questions
+from parley.rag.evaluation import Metrics, Question, load_questions
 from parley.rag.rerankers import OverlapReranker
 from parley.rag.retrieval import Mode
 
@@ -106,11 +106,13 @@ def test_best_row_ignores_the_test_split() -> None:
 
 
 @pytest.fixture(scope="module")
-def questions():
+def questions() -> list[Question]:
     return load_questions()
 
 
-def test_ablation_covers_the_grid_and_dedupes_bm25(session: Session, questions) -> None:
+def test_ablation_covers_the_grid_and_dedupes_bm25(
+    session: Session, questions: list[Question]
+) -> None:
     rows = run_ablation(session, load_policies(), questions, EMBEDDERS, OverlapReranker())
     strategies = len(ChunkStrategy)
     assert len(rows) == strategies * 2 * (1 + 2 * 2)
@@ -120,7 +122,9 @@ def test_ablation_covers_the_grid_and_dedupes_bm25(session: Session, questions) 
     assert all(r.dev.n + r.test.n == len(questions) for r in rows)
 
 
-def test_report_and_filter_effect_for_the_chosen_row(session: Session, questions) -> None:
+def test_report_and_filter_effect_for_the_chosen_row(
+    session: Session, questions: list[Question]
+) -> None:
     docs = load_policies()
     reranker = OverlapReranker()
     rows = run_ablation(session, docs, questions, EMBEDDERS, reranker)

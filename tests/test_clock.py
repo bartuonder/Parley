@@ -9,7 +9,7 @@ DB_URL = "postgresql://user:pw@localhost:5432/parley"
 
 
 def settings_with(fixed_now: datetime | None) -> Settings:
-    return Settings(_env_file=None, database_url=DB_URL, fixed_now=fixed_now)  # type: ignore[call-arg]
+    return Settings(_env_file=None, database_url=DB_URL, fixed_now=fixed_now)
 
 
 def test_utcnow_uses_pinned_time(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,4 +1,6 @@
-from sqlalchemy import func, select
+from typing import Any
+
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from parley.db.enums import (
@@ -76,15 +78,17 @@ def test_no_timestamps_in_the_future(seeded: Session) -> None:
 
 def test_refunds_are_consistent_with_targets(seeded: Session) -> None:
     for refund in seeded.scalars(select(Refund)):
-        target_amount = (
-            refund.order.total_cents if refund.order is not None else refund.invoice.amount_cents
-        )
+        if refund.order is not None:
+            target_amount = refund.order.total_cents
+        else:
+            assert refund.invoice is not None
+            target_amount = refund.invoice.amount_cents
         assert refund.amount_cents <= target_amount
         assert (refund.processed_at is not None) == (refund.status == RefundStatus.PROCESSED)
 
 
 def test_covers_edge_cases_needed_by_eval(seeded: Session) -> None:
-    def count(stmt) -> int:
+    def count(stmt: Select[Any]) -> int:
         return seeded.scalar(select(func.count()).select_from(stmt.subquery())) or 0
 
     assert count(select(Shipment).where(Shipment.status == ShipmentStatus.LOST)) > 0

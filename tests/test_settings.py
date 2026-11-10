@@ -15,8 +15,8 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings.cache_clear()
 
 
-def build(**overrides: str) -> Settings:
-    return Settings(_env_file=None, **overrides)  # type: ignore[call-arg]
+def build() -> Settings:
+    return Settings(_env_file=None)
 
 
 def test_defaults_with_required_database_url(monkeypatch: pytest.MonkeyPatch) -> None:

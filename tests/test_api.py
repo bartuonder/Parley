@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from parley.backend.api import create_app, get_backend
 from parley.backend.services import Backend
 from parley.db.enums import OrderStatus, ShipmentStatus
+from parley.db.models import Order
 from tests.factories import (
     NOW,
     make_customer,
@@ -27,7 +28,7 @@ def client(session: Session) -> Iterator[TestClient]:
     yield TestClient(app)
 
 
-def delivered_order(session: Session, price: int = 5000):
+def delivered_order(session: Session, price: int = 5000) -> Order:
     order = make_order(session, make_customer(session), total_cents=price)
     make_item(session, order, unit_price_cents=price)
     make_shipment(session, order, status=ShipmentStatus.DELIVERED, delivered_at=NOW)
