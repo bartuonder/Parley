@@ -139,10 +139,9 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 0 kickoff
-1. Propose the folder layout and tooling plan, wait for approval.
-2. Draft `docs/PROJECT.md` (problem, target metrics, non-goals).
-3. Scaffold the repo, make lint and tests pass, commit.
+## Today: Phase 3 kickoff
+1. Propose the plan for the MCP tool layer and the single agent, wait for approval.
+2. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
 ## Progress
 - [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
@@ -168,3 +167,8 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-10: Retrieval relevance is defined by policy version plus an evidence sentence, never by chunk id, so the same labels work across chunking strategies. Selection uses doc-level metrics because passage-level ones favor coarse chunks.
 - 2026-11-10: Chosen RAG configuration is section chunks, MiniLM, dense search, cross-encoder rerank (20 candidates, top 5). Gaps of one dev question count as ties, and ties go to the cheapest option. The as-of metadata filter is always on; it removes 25% stale hits from the top five.
 - 2026-11-10: RAG index tables are excluded from the seed reset and fingerprint, so `make seed` never wipes an index. Reindex with `make rag-index`.
+- 2026-11-10: `make lint` runs ruff and mypy (`disallow_untyped_defs`) over `src` and `tests`, so the full-type-hints rule is enforced and CI checks it. The pre-commit hook is installed by `make setup`.
+- 2026-11-10: Refund writes serialize on a `FOR UPDATE` lock of the order or invoice. The idempotency key is checked again after the lock, and a unique-key race is settled in a savepoint by catching `IntegrityError`. A threaded test shows two refunds on one order both succeeded before the lock existed.
+- 2026-11-10: The chunk index stores a corpus hash and `default_retriever` refuses a stale index with a clear error. Bump `INDEX_FORMAT_VERSION` whenever chunk text or metadata format changes.
+- 2026-11-10: `.env` and the model cache are resolved from the project root, not the working directory. `PARLEY_FIXED_NOW` is rejected when `PARLEY_ENV` is prod.
+- 2026-11-10: Loaded embedders and the reranker are cached per process; the per-retriever query vector cache is bounded.

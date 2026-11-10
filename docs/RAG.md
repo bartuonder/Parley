@@ -30,7 +30,8 @@ format_context(hits)  # numbered passages, each with its citation and effective 
 - **Search** (`retrieval.py`): stemmed BM25, dense, or both fused with reciprocal rank fusion, optionally reranked by a cross-encoder.
 - **Filters** (`filters.py`): as-of date (drops superseded, future, and expired versions), region, latest version only.
 - **Citations**: every hit carries `POL-REF-001@v2 / Return window`.
-- **Models**: local ONNX through `fastembed`; no API calls. Weights download once into `.cache/models`.
+- **Freshness** (`freshness.py`): the index stores a hash of the policy corpus; `default_retriever` raises `StaleIndexError` if the policies changed since `make rag-index`.
+- **Models**: local ONNX through `fastembed`; no API calls. Weights download once into `.cache/models` and are loaded once per process.
 
 ## Findings
 
