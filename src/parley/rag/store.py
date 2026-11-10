@@ -6,12 +6,15 @@ from parley.rag.models import Chunk
 from parley.rag.tables import ChunkEmbeddingRow, ChunkRow
 
 
-def index_chunks(session: Session, strategy: ChunkStrategy, chunks: list[Chunk]) -> None:
+def index_chunks(
+    session: Session, strategy: ChunkStrategy, chunks: list[Chunk], corpus_hash: str
+) -> None:
     """Replace every stored chunk (and its embeddings) of one strategy."""
     session.execute(delete(ChunkRow).where(ChunkRow.strategy == strategy.value))
     session.add_all(
         ChunkRow(
             strategy=strategy.value,
+            corpus_hash=corpus_hash,
             **c.model_dump(mode="python", exclude={"regions"}),
             regions=[r.value for r in c.regions],
         )
@@ -23,6 +26,11 @@ def index_chunks(session: Session, strategy: ChunkStrategy, chunks: list[Chunk])
 def load_chunks(session: Session, strategy: ChunkStrategy) -> list[Chunk]:
     stmt = select(ChunkRow).where(ChunkRow.strategy == strategy.value).order_by(ChunkRow.id)
     return [_to_chunk(row) for row in session.scalars(stmt)]
+
+
+def stored_corpus_hashes(session: Session, strategy: ChunkStrategy) -> set[str]:
+    stmt = select(ChunkRow.corpus_hash).where(ChunkRow.strategy == strategy.value).distinct()
+    return set(session.scalars(stmt))
 
 
 def save_embeddings(

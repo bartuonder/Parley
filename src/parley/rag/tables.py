@@ -27,6 +27,7 @@ class ChunkRow(Base):
     expires_date: Mapped[date | None] = mapped_column(Date)
     section: Mapped[str | None] = mapped_column(String(200))
     text: Mapped[str] = mapped_column(Text)
+    corpus_hash: Mapped[str] = mapped_column(String(64))
 
     __table_args__ = (UniqueConstraint("strategy", "chunk_id", name="uq_chunks_strategy_chunk"),)
 

@@ -7,6 +7,7 @@ from parley.policies.models import PolicyDoc, Region
 from parley.rag.chunking import ChunkStrategy
 from parley.rag.embedders import Embedder, get_embedder
 from parley.rag.filters import SearchFilter
+from parley.rag.freshness import assert_index_fresh
 from parley.rag.indexing import build_index
 from parley.rag.rerankers import Reranker, get_reranker
 from parley.rag.retrieval import Hit, Mode, Retriever
@@ -31,8 +32,13 @@ def build_default_index(
 
 
 def default_retriever(
-    session: Session, embedder: Embedder | None = None, reranker: Reranker | None = None
+    session: Session,
+    embedder: Embedder | None = None,
+    reranker: Reranker | None = None,
+    docs: list[PolicyDoc] | None = None,
 ) -> Retriever:
+    """Retriever over the default index; refuses to start if the index is out of date."""
+    assert_index_fresh(session, DEFAULT_STRATEGY, docs if docs is not None else load_policies())
     return Retriever(
         session,
         DEFAULT_STRATEGY,
