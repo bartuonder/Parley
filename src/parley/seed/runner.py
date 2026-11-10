@@ -2,12 +2,13 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 
-from sqlalchemy import select, text
+from sqlalchemy import Table, select, text
 from sqlalchemy.orm import Session
 
 from parley.db.base import Base
 from parley.db.models import Customer, Invoice, Order, Refund, Shipment, Subscription, Ticket
 from parley.policies.loader import load_policies
+from parley.rag.tables import INDEX_TABLES
 from parley.seed.config import SeedConfig
 from parley.seed.customers import generate_customers
 from parley.seed.fulfillment import fulfill_orders
@@ -37,8 +38,12 @@ def build_world(cfg: SeedConfig) -> World:
     return World(customers, orders, shipments, subscriptions, invoices, refunds)
 
 
+def world_tables() -> list[Table]:
+    return [t for t in Base.metadata.sorted_tables if t.name not in INDEX_TABLES]
+
+
 def reset_database(session: Session) -> None:
-    tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
+    tables = ", ".join(t.name for t in world_tables())
     session.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
 
 
@@ -63,7 +68,7 @@ def seed_database(session: Session, cfg: SeedConfig) -> World:
 def fingerprint(session: Session) -> str:
     """Stable hash of every row in every table, for determinism checks."""
     digest = hashlib.sha256()
-    for table in Base.metadata.sorted_tables:
+    for table in world_tables():
         rows = session.execute(select(table).order_by(table.c.id)).all()
         payload = json.dumps([list(r) for r in rows], default=str, sort_keys=True)
         digest.update(f"{table.name}:{payload}".encode())
