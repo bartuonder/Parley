@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.14",
     "fastapi>=0.115",
     "fastembed>=0.5",
+    "pgvector>=0.3",
     "psycopg[binary]>=3.2",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
