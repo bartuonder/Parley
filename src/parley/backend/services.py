@@ -116,14 +116,8 @@ class Backend:
 
         if amount_cents <= 0:
             raise InvalidRequestError("amount must be positive")
-        order, invoice = self._resolve_target(target, target_id)
-        eligibility = (
-            order_refund_eligibility(order, self.now())
-            if order is not None
-            else invoice_refund_eligibility(
-                invoice, self._has_earlier_duplicate(invoice), self.now()
-            )
-        )
+        subject = self._load_target(target, target_id)
+        eligibility = self._eligibility(subject)
         if not eligibility.eligible:
             raise NotEligibleError(eligibility.code)
         if amount_cents > eligibility.max_refund_cents:
@@ -133,10 +127,10 @@ class Backend:
 
         needs_approval = requires_approval(amount_cents)
         refund = Refund(
-            order=order,
-            invoice=invoice,
+            order=subject if isinstance(subject, Order) else None,
+            invoice=subject if isinstance(subject, Invoice) else None,
             amount_cents=amount_cents,
-            currency=(order or invoice).currency,
+            currency=subject.currency,
             reason=reason,
             status=RefundStatus.PENDING_APPROVAL if needs_approval else RefundStatus.PROCESSED,
             idempotency_key=idempotency_key,
@@ -177,12 +171,16 @@ class Backend:
             raise NotFoundError(f"{model.__name__.lower()} {pk} not found")
         return obj
 
-    def _resolve_target(
-        self, target: RefundTarget, target_id: int
-    ) -> tuple[Order | None, Invoice | None]:
+    def _load_target(self, target: RefundTarget, target_id: int) -> Order | Invoice:
         if target == RefundTarget.ORDER:
-            return self.get_order(target_id), None
-        return None, self.get_invoice(target_id)
+            return self.get_order(target_id)
+        return self.get_invoice(target_id)
+
+    def _eligibility(self, subject: Order | Invoice) -> Eligibility:
+        if isinstance(subject, Order):
+            return order_refund_eligibility(subject, self.now())
+        duplicate = self._has_earlier_duplicate(subject)
+        return invoice_refund_eligibility(subject, duplicate, self.now())
 
     def _has_earlier_duplicate(self, invoice: Invoice) -> bool:
         if invoice.subscription_id is None:
@@ -198,16 +196,17 @@ class Backend:
         return self.session.scalar(stmt.limit(1)) is not None
 
     def _apply_processed(self, refund: Refund) -> None:
+        subject = refund.order if refund.order is not None else refund.invoice
+        if subject is None:
+            raise InvalidRequestError("refund has no target")
         refunded = sum(
-            r.amount_cents
-            for r in (refund.order or refund.invoice).refunds
-            if r.status in ACTIVE_REFUND_STATUSES
+            r.amount_cents for r in subject.refunds if r.status in ACTIVE_REFUND_STATUSES
         )
-        if refund.order is not None:
-            full = refunded >= refund.order.total_cents
-            refund.order.status = OrderStatus.REFUNDED if full else OrderStatus.PARTIALLY_REFUNDED
-        elif refund.invoice is not None and refunded >= refund.invoice.amount_cents:
-            refund.invoice.status = InvoiceStatus.REFUNDED
+        if isinstance(subject, Order):
+            full = refunded >= subject.total_cents
+            subject.status = OrderStatus.REFUNDED if full else OrderStatus.PARTIALLY_REFUNDED
+        elif refunded >= subject.amount_cents:
+            subject.status = InvoiceStatus.REFUNDED
         self.session.flush()
 
 
