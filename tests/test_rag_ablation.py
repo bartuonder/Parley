@@ -20,14 +20,17 @@ from parley.rag.retrieval import Mode
 EMBEDDERS = {"hash-256": HashEmbedder(256), "hash-128": HashEmbedder(128)}
 
 
-def metrics(recall_3: float, mrr: float, stale: float = 0.0, n: int = 10) -> Metrics:
+def metrics(recall_3: float, mrr: float, stale: float = 0.0, context: float = 100.0) -> Metrics:
     return Metrics(
-        n=n,
+        n=10,
         recall_at_1=recall_3 / 2,
         recall_at_3=recall_3,
         recall_at_5=recall_3,
         mrr=mrr,
         stale_rate=stale,
+        doc_recall_at_3=recall_3,
+        doc_mrr=mrr,
+        context_words=context,
     )
 
 
@@ -59,13 +62,22 @@ def test_cached_reranker_scores_each_pair_once() -> None:
     assert inner.calls == [["aa", "b"], ["ccc"]]
 
 
-def test_best_row_uses_recall_then_mrr_then_stale_rate() -> None:
+def test_best_row_uses_doc_recall_then_mrr_then_stale_rate_then_context() -> None:
     low = row("low", metrics(0.5, 0.9))
     high = row("high", metrics(0.8, 0.4))
     tie_worse_mrr = row("tie-a", metrics(0.8, 0.3))
     tie_stale = row("tie-b", metrics(0.8, 0.4, stale=0.2))
+    tie_long_context = row("tie-c", metrics(0.8, 0.4, context=300.0))
     assert best_row([low, tie_worse_mrr, high]).embedding == "high"
     assert best_row([tie_stale, high]).embedding == "high"
+    assert best_row([tie_long_context, high]).embedding == "high"
+
+
+def test_best_row_prefers_doc_metrics_over_passage_metrics() -> None:
+    coarse = row("coarse", metrics(0.8, 0.8))
+    fine_dev = metrics(0.9, 0.9).model_copy(update={"recall_at_3": 0.1, "mrr": 0.1})
+    fine = row("fine", fine_dev)
+    assert best_row([coarse, fine]).embedding == "fine"
 
 
 def test_best_row_ignores_the_test_split() -> None:
