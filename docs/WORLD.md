@@ -35,5 +35,7 @@ Ticket text uses `{alias}` placeholders that are replaced with database ids when
 ```
 make seed     # migrate and rebuild the world
 make api      # run the backend API
-make test     # unit, schema, seed, policy, and scenario tests
+make test     # unit, schema, seed, policy, scenario, and RAG tests
+make rag-index  # chunk policies and store vectors (see RAG.md)
+make rag-eval   # rerun the retrieval ablation
 ```
