@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from parley.settings import Settings, get_settings
+from parley.settings import PROJECT_ROOT, Settings, get_settings
 
 DB_URL = "postgresql://user:pw@localhost:5432/parley"
 
@@ -59,3 +60,38 @@ def test_fixed_now_defaults_to_none_and_parses(monkeypatch: pytest.MonkeyPatch) 
     assert build().fixed_now is None
     monkeypatch.setenv("PARLEY_FIXED_NOW", "2026-06-01T12:00:00+00:00")
     assert build().fixed_now == datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+
+
+def test_pinned_clock_is_rejected_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    monkeypatch.setenv("PARLEY_FIXED_NOW", "2026-06-01T12:00:00+00:00")
+    monkeypatch.setenv("PARLEY_ENV", "prod")
+    with pytest.raises(ValidationError, match="FIXED_NOW"):
+        build()
+    monkeypatch.setenv("PARLEY_ENV", "dev")
+    assert build().fixed_now is not None
+
+
+def test_model_cache_dir_defaults_to_an_absolute_path_in_the_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    monkeypatch.delenv("PARLEY_MODEL_CACHE_DIR", raising=False)
+    path = build().model_cache_dir
+    assert path.is_absolute()
+    assert path == PROJECT_ROOT / ".cache" / "models"
+
+
+def test_relative_model_cache_dir_is_resolved_against_the_project_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    monkeypatch.setenv("PARLEY_MODEL_CACHE_DIR", "somewhere/models")
+    monkeypatch.chdir(tmp_path)
+    assert build().model_cache_dir == PROJECT_ROOT / "somewhere" / "models"
+    monkeypatch.setenv("PARLEY_MODEL_CACHE_DIR", str(tmp_path / "abs"))
+    assert build().model_cache_dir == tmp_path / "abs"
+
+
+def test_dotenv_path_does_not_depend_on_the_working_directory() -> None:
+    assert Settings.model_config["env_file"] == PROJECT_ROOT / ".env"
