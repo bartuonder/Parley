@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from parley.backend.rules import (
@@ -106,17 +107,17 @@ class Backend:
         idempotency_key: str,
     ) -> tuple[Refund, bool]:
         """Return the refund and whether this call created it (False on an idempotent replay)."""
-        existing = self.session.scalar(
-            select(Refund).where(Refund.idempotency_key == idempotency_key)
-        )
-        if existing is not None:
-            if not _same_request(existing, target, target_id, amount_cents):
-                raise IdempotencyConflictError(f"key {idempotency_key} used for another request")
-            return existing, False
-
+        replay = self._replay(target, target_id, amount_cents, idempotency_key)
+        if replay is not None:
+            return replay, False
         if amount_cents <= 0:
             raise InvalidRequestError("amount must be positive")
-        subject = self._load_target(target, target_id)
+
+        subject = self._lock_target(target, target_id)
+        replay = self._replay(target, target_id, amount_cents, idempotency_key)
+        if replay is not None:
+            return replay, False
+
         eligibility = self._eligibility(subject)
         if not eligibility.eligible:
             raise NotEligibleError(eligibility.code)
@@ -127,8 +128,8 @@ class Backend:
 
         needs_approval = requires_approval(amount_cents)
         refund = Refund(
-            order=subject if isinstance(subject, Order) else None,
-            invoice=subject if isinstance(subject, Invoice) else None,
+            order_id=subject.id if isinstance(subject, Order) else None,
+            invoice_id=subject.id if isinstance(subject, Invoice) else None,
             amount_cents=amount_cents,
             currency=subject.currency,
             reason=reason,
@@ -137,14 +138,28 @@ class Backend:
             created_at=self.now(),
             processed_at=None if needs_approval else self.now(),
         )
-        self.session.add(refund)
-        self.session.flush()
+        try:
+            with self.session.begin_nested():
+                self.session.add(refund)
+                self.session.flush()
+        except IntegrityError:
+            self.session.expire(subject, ["refunds"])
+            replay = self._replay(target, target_id, amount_cents, idempotency_key)
+            if replay is None:
+                raise
+            return replay, False
+        self.session.expire(subject, ["refunds"])
         if not needs_approval:
             self._apply_processed(refund)
         return refund, True
 
     def resolve_refund(self, refund_id: int, approve: bool) -> Refund:
         refund = self._get(Refund, refund_id)
+        subject = refund.order if refund.order is not None else refund.invoice
+        if subject is None:
+            raise InvalidRequestError("refund has no target")
+        self._lock_subject(subject)
+        self.session.refresh(refund, with_for_update=True)
         if refund.status != RefundStatus.PENDING_APPROVAL:
             raise InvalidRequestError(f"refund is {refund.status}, not pending approval")
         if approve:
@@ -175,6 +190,26 @@ class Backend:
         if target == RefundTarget.ORDER:
             return self.get_order(target_id)
         return self.get_invoice(target_id)
+
+    def _lock_target(self, target: RefundTarget, target_id: int) -> Order | Invoice:
+        """Row-lock the refund target so concurrent refunds on it run one after another."""
+        subject = self._load_target(target, target_id)
+        self._lock_subject(subject)
+        return subject
+
+    def _lock_subject(self, subject: Order | Invoice) -> None:
+        self.session.refresh(subject, with_for_update=True)
+        self.session.expire(subject, ["refunds"])
+
+    def _replay(
+        self, target: RefundTarget, target_id: int, amount_cents: int, key: str
+    ) -> Refund | None:
+        existing = self.session.scalar(select(Refund).where(Refund.idempotency_key == key))
+        if existing is None:
+            return None
+        if not _same_request(existing, target, target_id, amount_cents):
+            raise IdempotencyConflictError(f"key {key} used for another request")
+        return existing
 
     def _eligibility(self, subject: Order | Invoice) -> Eligibility:
         if isinstance(subject, Order):
