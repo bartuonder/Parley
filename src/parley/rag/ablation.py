@@ -91,15 +91,26 @@ def run_ablation(
     return rows
 
 
+EMBEDDING_COST = {NO_EMBEDDER: 0, "minilm": 1, "bge-small": 2, "bge-base": 3}
+MODE_COST = {Mode.BM25: 0, Mode.DENSE: 1, Mode.HYBRID: 2}
+CONTEXT_BUCKET_WORDS = 25
+
+
 def best_row(rows: list[Row]) -> Row:
-    """Pick on the dev split with granularity-neutral doc metrics; ties go to less context."""
-    return max(
-        rows,
+    """Choose on dev doc metrics; a gap of one question is noise, so ties go to the cheapest."""
+    tolerance = 1 / min(r.dev.n for r in rows)
+    top_recall = max(r.dev.doc_recall_at_3 for r in rows)
+    pool = [r for r in rows if r.dev.doc_recall_at_3 >= top_recall - tolerance]
+    top_mrr = max(r.dev.doc_mrr for r in pool)
+    pool = [r for r in pool if r.dev.doc_mrr >= top_mrr - tolerance]
+    return min(
+        pool,
         key=lambda r: (
-            r.dev.doc_recall_at_3,
-            r.dev.doc_mrr,
-            -r.dev.stale_rate,
-            -r.dev.context_words,
+            r.dev.stale_rate,
+            round(r.dev.context_words / CONTEXT_BUCKET_WORDS),
+            EMBEDDING_COST.get(r.embedding, len(EMBEDDING_COST)),
+            MODE_COST[r.mode],
+            r.strategy.value,
         ),
     )
 
@@ -176,13 +187,16 @@ def render_report(rows: list[Row], best: Row, effect: FilterEffect, sizes: dict[
         "depend on chunk size, so they are used for selection.",
         "- Stale@5 is the share of the top five that is superseded, expired, or not yet in force.",
         "- One question is worth 1.4 points on dev and 3.3 on test; smaller gaps are noise.",
+        "- Selection: keep configurations within one dev question of the best doc R@3 and doc MRR, "
+        "then take the one with fewer stale hits, shorter context, smaller model, and simpler "
+        "retrieval mode, in that order.",
         "",
         "## Chosen configuration",
         "",
         f"**{best.label}**",
         "",
         f"| Split | n {HEADER} Stale@5 | Context words |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for name, m in (("dev", best.dev), ("test", best.test)):
         lines.append(

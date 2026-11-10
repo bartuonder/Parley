@@ -62,22 +62,41 @@ def test_cached_reranker_scores_each_pair_once() -> None:
     assert inner.calls == [["aa", "b"], ["ccc"]]
 
 
-def test_best_row_uses_doc_recall_then_mrr_then_stale_rate_then_context() -> None:
-    low = row("low", metrics(0.5, 0.9))
-    high = row("high", metrics(0.8, 0.4))
-    tie_worse_mrr = row("tie-a", metrics(0.8, 0.3))
-    tie_stale = row("tie-b", metrics(0.8, 0.4, stale=0.2))
-    tie_long_context = row("tie-c", metrics(0.8, 0.4, context=300.0))
-    assert best_row([low, tie_worse_mrr, high]).embedding == "high"
-    assert best_row([tie_stale, high]).embedding == "high"
-    assert best_row([tie_long_context, high]).embedding == "high"
+def test_best_row_takes_the_clear_winner_on_doc_metrics() -> None:
+    low = row("bge-base", metrics(0.5, 0.9))
+    high = row("bge-base", metrics(0.8, 0.4))
+    assert best_row([low, high]) is high
+    worse_mrr = row("minilm", metrics(0.8, 0.2))
+    assert best_row([worse_mrr, high]) is high
+
+
+def test_best_row_treats_a_one_question_gap_as_a_tie_and_takes_the_cheaper() -> None:
+    expensive = row("bge-base", metrics(0.80, 0.50, context=240.0))
+    cheaper = row("bge-base", metrics(0.79, 0.50, context=110.0))
+    assert best_row([expensive, cheaper]) is cheaper
+
+
+def test_best_row_breaks_ties_by_stale_context_model_then_mode() -> None:
+    base = metrics(0.8, 0.5)
+    stale = row("minilm", metrics(0.8, 0.5, stale=0.1))
+    clean = row("bge-base", base)
+    assert best_row([stale, clean]) is clean
+
+    long_context = row("minilm", metrics(0.8, 0.5, context=300.0))
+    assert best_row([long_context, clean]) is clean
+
+    small = row("minilm", base)
+    assert best_row([clean, small]) is small
+
+    dense = row("minilm", base).model_copy(update={"mode": Mode.DENSE})
+    assert best_row([small, dense]) is dense
 
 
 def test_best_row_prefers_doc_metrics_over_passage_metrics() -> None:
-    coarse = row("coarse", metrics(0.8, 0.8))
-    fine_dev = metrics(0.9, 0.9).model_copy(update={"recall_at_3": 0.1, "mrr": 0.1})
-    fine = row("fine", fine_dev)
-    assert best_row([coarse, fine]).embedding == "fine"
+    coarse = row("minilm", metrics(0.8, 0.8))
+    fine_dev = metrics(0.95, 0.95).model_copy(update={"recall_at_3": 0.1, "mrr": 0.1})
+    fine = row("minilm", fine_dev)
+    assert best_row([coarse, fine]) is fine
 
 
 def test_best_row_ignores_the_test_split() -> None:
