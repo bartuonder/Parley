@@ -24,6 +24,8 @@ dev = [
     "ruff>=0.8",
     "pre-commit>=4.0",
     "httpx>=0.28",
+    "mypy>=2.4.1",
+    "types-pyyaml>=6.0.12.20261103",
 ]
 
 [build-system]
@@ -48,3 +50,20 @@ markers = ["model: downloads and runs real embedding models (run with -m model)"
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["rank_bm25", "fastembed", "fastembed.*", "py_rust_stemmers", "pgvector.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["migrations.*"]
+disallow_untyped_defs = false
