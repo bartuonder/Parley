@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from parley.backend.services import Backend
+from parley.rag.retrieval import Retriever
 from parley.tools.permissions import ALL_PERMISSIONS, Permission
 
 
@@ -19,3 +20,4 @@ class ToolContext:
     ticket_id: str
     allowed: frozenset[Permission] = ALL_PERMISSIONS
     escalations: list[Escalation] = field(default_factory=list)
+    retriever: Retriever | None = None
