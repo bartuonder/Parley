@@ -1,6 +1,9 @@
+import json
 from typing import Any
 
 from parley.agent.llm import LLMResponse, Message, ToolCall, Usage
+from parley.evals.schema import Scenario
+from parley.evals.world import WorldIndex
 
 
 class ScriptedLLM:
@@ -30,3 +33,25 @@ def reply_turn(text: str, cost_usd: float = 0.001) -> LLMResponse:
     return LLMResponse(
         content=text, usage=Usage(prompt_tokens=100, completion_tokens=30, cost_usd=cost_usd)
     )
+
+
+def reference_llm(scenario: Scenario, index: WorldIndex) -> ScriptedLLM:
+    """A model that carries out the scenario's reference solution, then hands over if needed."""
+    turns: list[LLMResponse] = []
+    for n, action in enumerate(scenario.reference_actions, start=1):
+        if action.tool == "cancel_subscription":
+            args: dict[str, Any] = {"subscription_id": index.subscriptions[action.alias]}
+        else:
+            ids = index.orders if action.target == "order" else index.invoices
+            args = {
+                "target": action.target,
+                "target_id": ids[action.alias],
+                "amount_cents": action.amount_cents,
+                "reason": "reference",
+            }
+        turns.append(call_turn(action.tool, json.dumps(args), f"c{n}"))
+    if scenario.expected.requires_human and not scenario.reference_actions:
+        handover = {"reason": "other", "summary": "reference handover"}
+        turns.append(call_turn("escalate_to_human", json.dumps(handover), "c-esc"))
+    turns.append(reply_turn("Done."))
+    return ScriptedLLM(turns)
