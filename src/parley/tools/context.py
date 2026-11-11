@@ -1,7 +1,13 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from parley.backend.services import Backend
 from parley.tools.permissions import ALL_PERMISSIONS, Permission
+
+
+@dataclass(frozen=True)
+class Escalation:
+    reason: str
+    summary: str
 
 
 @dataclass
@@ -12,3 +18,4 @@ class ToolContext:
     customer_id: int
     ticket_id: str
     allowed: frozenset[Permission] = ALL_PERMISSIONS
+    escalations: list[Escalation] = field(default_factory=list)
