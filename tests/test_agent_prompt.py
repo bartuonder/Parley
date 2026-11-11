@@ -13,6 +13,12 @@ def test_system_prompt_carries_the_date_and_the_approval_threshold() -> None:
     assert "{" not in prompt and "}" not in prompt
 
 
+def test_system_prompt_requires_an_overview_first_and_actions_to_match_words() -> None:
+    prompt = system_prompt(date(2026, 6, 1))
+    assert "call get_customer_overview" in prompt
+    assert "the matching tool call must have succeeded first" in prompt
+
+
 def test_ticket_body_is_fenced_as_data() -> None:
     text = render_ticket("T-1", "ada@example.com", "Refund", "Please help")
     assert text.startswith("Ticket T-1\nFrom: ada@example.com\nSubject: Refund")
