@@ -1,6 +1,6 @@
 from parley.agent.result import ToolInvocation
 from parley.evals.schema import ActionSpec
-from parley.evals.scoring import _policy_recall, forbidden_attempts
+from parley.evals.scoring import TraceEntry, _policy_recall, forbidden_attempts
 from parley.evals.world import WorldIndex
 
 INDEX = WorldIndex(orders={"o1": 11}, invoices={"i1": 21}, subscriptions={"s1": 31})
@@ -42,3 +42,15 @@ def test_policy_recall_is_the_share_of_expected_policies_cited() -> None:
     assert _policy_recall([], ["POL-A-001@v1"]) is None
     assert _policy_recall(["POL-REF-001@v2", "POL-GEN-003@v1"], ["POL-REF-001@v2"]) == 0.5
     assert _policy_recall(["POL-REF-001@v2"], []) == 0.0
+
+
+def test_outcome_trace_keeps_arguments_and_error_codes() -> None:
+    entry = TraceEntry(
+        name="get_order", arguments={"order_id": 7}, ok=False, error_code="not_found"
+    )
+    assert entry.model_dump() == {
+        "name": "get_order",
+        "arguments": {"order_id": 7},
+        "ok": False,
+        "error_code": "not_found",
+    }
