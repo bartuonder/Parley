@@ -50,6 +50,11 @@ def build_report(
     }
 
 
+def is_complete(outcomes: list[ScenarioOutcome], expected: int) -> bool:
+    """A report is only worth keeping if every selected scenario ran without crashing."""
+    return len(outcomes) == expected and all(o.error is None for o in outcomes)
+
+
 def print_progress(outcome: ScenarioOutcome) -> None:
     flag = "ok  " if outcome.success else "FAIL"
     extra = f" error={outcome.error}" if outcome.error else ""
@@ -60,12 +65,11 @@ def print_progress(outcome: ScenarioOutcome) -> None:
     )
 
 
-async def run(args: argparse.Namespace) -> list[ScenarioOutcome]:
+async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[ScenarioOutcome]:
     settings = get_settings()
     if settings.llm_api_key is None:
         raise SystemExit("PARLEY_LLM_API_KEY is not set")
     model = args.model or settings.agent_model
-    scenarios = select_scenarios(load_scenarios(), args.ids, args.category, args.limit)
     engine = recreate_eval_database()
     try:
         with session_scope(engine) as session:
@@ -96,20 +100,23 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
 
-    outcomes = asyncio.run(run(args))
-    model = args.model or get_settings().agent_model
+    scenarios = select_scenarios(load_scenarios(), args.ids, args.category, args.limit)
+    outcomes = asyncio.run(run(args, scenarios))
+    settings = get_settings()
+    model = args.model or settings.agent_model
+    print(render_markdown(outcomes, model))
+    if not is_complete(outcomes, len(scenarios)):
+        raise SystemExit("run incomplete or had crashed scenarios; report not written")
+
     limits = {
-        "max_steps": get_settings().agent_max_steps,
-        "max_cost_usd": get_settings().agent_max_cost_usd,
+        "max_steps": settings.agent_max_steps,
+        "max_cost_usd": settings.agent_max_cost_usd,
         "total_budget_usd": args.budget,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(
-        json.dumps(build_report(outcomes, model, limits), indent=2) + "\n", encoding="utf-8"
-    )
+    report = build_report(outcomes, model, limits)
+    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     args.out.with_suffix(".md").write_text(render_markdown(outcomes, model), encoding="utf-8")
-    print()
-    print(render_markdown(outcomes, model))
 
 
 if __name__ == "__main__":
