@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     database_url: PostgresDsn
     llm_api_key: SecretStr | None = Field(default=None, repr=False)
+    agent_model: str = "gpt-4.1-mini"
+    agent_max_steps: int = Field(default=10, ge=1, le=30)
+    agent_max_cost_usd: float = Field(default=0.25, gt=0)
     fixed_now: datetime | None = None
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
 
