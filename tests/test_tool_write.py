@@ -132,3 +132,19 @@ def test_cancelling_another_customers_subscription_is_denied(
     result = REGISTRY.call(ctx, "cancel_subscription", {"subscription_id": sub.id})
     assert result.error_code == "access_denied"
     assert session.get_one(Subscription, sub.id).cancel_at_period_end is False
+
+
+def test_escalation_is_recorded_on_the_context(ctx: ToolContext) -> None:
+    result = REGISTRY.call(
+        ctx, "escalate_to_human", {"reason": "legal_threat", "summary": "Mentions a lawyer"}
+    )
+    assert result.ok and result.data == {"escalated": True, "reason": "legal_threat"}
+    assert [(e.reason, e.summary) for e in ctx.escalations] == [
+        ("legal_threat", "Mentions a lawyer")
+    ]
+
+
+def test_escalation_rejects_unknown_reasons(ctx: ToolContext) -> None:
+    result = REGISTRY.call(ctx, "escalate_to_human", {"reason": "bored", "summary": "x"})
+    assert result.error_code == "invalid_arguments"
+    assert ctx.escalations == []
