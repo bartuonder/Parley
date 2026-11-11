@@ -14,6 +14,7 @@ class StopReason(StrEnum):
     MAX_STEPS = "max_steps"
     BUDGET = "budget"
     UNKNOWN_SENDER = "unknown_sender"
+    ERROR = "error"
 
 
 class ToolInvocation(BaseModel):
