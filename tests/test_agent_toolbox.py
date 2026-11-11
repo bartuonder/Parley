@@ -56,3 +56,12 @@ def test_failed_call_is_traced_with_its_error_code(session: Session, ctx: ToolCo
     invocation = asyncio.run(run())
     assert not invocation.ok
     assert invocation.output["error_code"] == "access_denied"
+
+
+def test_errors_raised_inside_the_toolbox_keep_their_original_type(ctx: ToolContext) -> None:
+    async def run() -> None:
+        async with open_toolbox(REGISTRY, ctx):
+            raise KeyError("boom")
+
+    with pytest.raises(KeyError, match="boom"):
+        asyncio.run(run())
