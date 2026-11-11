@@ -8,7 +8,7 @@ from parley.db.models import Customer
 from parley.tools.access import AccessDeniedError
 from parley.tools.context import ToolContext
 from parley.tools.permissions import ALL_PERMISSIONS, Permission
-from parley.tools.registry import ToolParams, ToolRegistry, ToolSpec
+from parley.tools.registry import ToolParams, ToolRegistry, ToolSpec, ToolUnavailableError
 from tests.factories import NOW, make_customer
 
 
@@ -86,6 +86,7 @@ def test_permission_levels_gate_tools(ctx: ToolContext) -> None:
         (AccessDeniedError("not yours"), "access_denied"),
         (NotFoundError("gone"), "not_found"),
         (NotEligibleError("window_expired"), "not_eligible"),
+        (ToolUnavailableError("no retriever"), "unavailable"),
     ],
 )
 def test_domain_errors_map_to_codes(ctx: ToolContext, error: Exception, code: str) -> None:
