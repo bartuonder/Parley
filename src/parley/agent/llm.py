@@ -1,5 +1,9 @@
 import logging
+import os
 from typing import Any, Protocol
+
+# In DEV mode litellm copies .env into os.environ on import, which would bypass our settings.
+os.environ.setdefault("LITELLM_MODE", "PRODUCTION")
 
 import litellm
 from pydantic import BaseModel, Field
