@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from parley.agent.result import AgentResult, StopReason, ToolInvocation
 from parley.db.enums import RefundStatus
@@ -30,10 +30,12 @@ class ScenarioOutcome(BaseModel):
     actual_diff: StateDiff
     error: str | None = None
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def handover_ok(self) -> bool:
         return self.handover_expected == self.handover_actual
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def success(self) -> bool:
         return self.state_ok and self.replied and self.error is None
