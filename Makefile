@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval api rag-index rag-eval up down
+.PHONY: setup test lint format migrate seed eval agent-eval api rag-index rag-eval up down
 
 setup:
 	uv sync
@@ -31,6 +31,9 @@ seed: up migrate
 
 eval:
 	@echo "eval: not implemented yet (Phase 5)"
+
+agent-eval: up
+	uv run python -m parley.evals.agent_eval $(ARGS)
 
 api:
 	uv run uvicorn parley.backend.api:create_app --factory --reload
