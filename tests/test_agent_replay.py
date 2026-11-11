@@ -7,7 +7,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from parley.agent.llm import LLMClient, LLMResponse, Message
-from parley.evals.agent_run import LLMFactory, evaluate, run_scenario
+from parley.evals.agent_run import MAX_CONSECUTIVE_ERRORS, LLMFactory, evaluate, run_scenario
 from parley.evals.loader import load_scenarios
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
@@ -106,3 +106,14 @@ def test_total_budget_stops_the_run_early(engine: Engine) -> None:
 
     outcomes = run_all(engine, SCENARIOS[:5], pricey, budget=1.0)
     assert len(outcomes) == 2
+
+
+def test_run_aborts_after_repeated_crashes(engine: Engine) -> None:
+    class Down:
+        async def complete(
+            self, messages: list[Message], tools: list[dict[str, Any]]
+        ) -> LLMResponse:
+            raise RuntimeError("no credits")
+
+    outcomes = run_all(engine, SCENARIOS[:10], lambda s, i: Down(), budget=5.0)
+    assert len(outcomes) == MAX_CONSECUTIVE_ERRORS
