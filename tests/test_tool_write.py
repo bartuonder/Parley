@@ -6,13 +6,20 @@ from sqlalchemy.orm import Session
 
 from parley.backend.rules import APPROVAL_THRESHOLD_CENTS
 from parley.backend.services import Backend
-from parley.db.enums import OrderStatus, RefundStatus, ShipmentStatus
-from parley.db.models import Order, Refund
+from parley.db.enums import OrderStatus, RefundStatus, ShipmentStatus, SubscriptionStatus
+from parley.db.models import Order, Refund, Subscription
 from parley.tools.context import ToolContext
 from parley.tools.permissions import Permission
 from parley.tools.registry import ToolRegistry
 from parley.tools.write import WRITE_TOOLS
-from tests.factories import NOW, make_customer, make_item, make_order, make_shipment
+from tests.factories import (
+    NOW,
+    make_customer,
+    make_item,
+    make_order,
+    make_shipment,
+    make_subscription,
+)
 
 REGISTRY = ToolRegistry(WRITE_TOOLS)
 
@@ -96,3 +103,32 @@ def test_risky_tools_need_risky_permission(session: Session, ctx: ToolContext) -
     result = REGISTRY.call(ctx, "issue_refund", refund_args(order, 5000))
     assert result.error_code == "permission_denied"
     assert refund_count(session) == 0
+
+
+def test_cancel_subscription_schedules_cancellation_at_period_end(
+    session: Session, ctx: ToolContext
+) -> None:
+    sub = make_subscription(session, ctx.backend.get_customer(ctx.customer_id))
+    args = {"subscription_id": sub.id}
+    first = REGISTRY.call(ctx, "cancel_subscription", args)
+    assert first.ok and first.data is not None
+    assert first.data["cancel_at_period_end"] is True and first.data["status"] == "active"
+    assert REGISTRY.call(ctx, "cancel_subscription", args).ok
+    assert session.get_one(Subscription, sub.id).cancel_at_period_end is True
+
+
+def test_cancelling_a_cancelled_subscription_is_refused(session: Session, ctx: ToolContext) -> None:
+    sub = make_subscription(session, ctx.backend.get_customer(ctx.customer_id))
+    sub.status = SubscriptionStatus.CANCELLED
+    session.flush()
+    result = REGISTRY.call(ctx, "cancel_subscription", {"subscription_id": sub.id})
+    assert result.error_code == "invalid_request"
+
+
+def test_cancelling_another_customers_subscription_is_denied(
+    session: Session, ctx: ToolContext
+) -> None:
+    sub = make_subscription(session, make_customer(session, "bob@example.com"))
+    result = REGISTRY.call(ctx, "cancel_subscription", {"subscription_id": sub.id})
+    assert result.error_code == "access_denied"
+    assert session.get_one(Subscription, sub.id).cancel_at_period_end is False
