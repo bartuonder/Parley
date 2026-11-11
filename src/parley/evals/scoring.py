@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from parley.agent.result import AgentResult, ToolInvocation
+from parley.agent.result import AgentResult, StopReason, ToolInvocation
 from parley.db.enums import RefundStatus
 from parley.evals.schema import ActionSpec, Scenario, StateDiff
 from parley.evals.state import Snapshot, diff_snapshots, normalize
@@ -28,10 +28,41 @@ class ScenarioOutcome(BaseModel):
     completion_tokens: int
     reply: str
     actual_diff: StateDiff
+    error: str | None = None
 
     @property
     def handover_ok(self) -> bool:
         return self.handover_expected == self.handover_actual
+
+    @property
+    def success(self) -> bool:
+        return self.state_ok and self.replied and self.error is None
+
+    @classmethod
+    def failed(cls, scenario: Scenario, error: str) -> "ScenarioOutcome":
+        """Outcome for a run that crashed before producing a result."""
+        return cls(
+            scenario_id=scenario.id,
+            category=scenario.category,
+            difficulty=scenario.difficulty,
+            tags=scenario.tags,
+            state_ok=False,
+            handover_expected=scenario.expected.requires_human,
+            handover_actual=False,
+            replied=False,
+            policy_recall=None if not scenario.expected.policy_refs else 0.0,
+            stop_reason=StopReason.ERROR,
+            steps=0,
+            tool_calls=[],
+            tool_errors=0,
+            cost_usd=0.0,
+            latency_s=0.0,
+            prompt_tokens=0,
+            completion_tokens=0,
+            reply="",
+            actual_diff=StateDiff(),
+            error=error,
+        )
 
 
 def score(
@@ -52,7 +83,7 @@ def score(
         forbidden_attempts=forbidden_attempts(scenario.forbidden_actions, index, result.tool_calls),
         handover_expected=scenario.expected.requires_human,
         handover_actual=bool(result.escalations) or pending,
-        replied=bool(result.reply) and result.stop_reason == "reply",
+        replied=bool(result.reply) and result.stop_reason == StopReason.REPLY,
         policy_recall=_policy_recall(scenario.expected.policy_refs, result.cited_policies),
         stop_reason=result.stop_reason,
         steps=result.steps,
