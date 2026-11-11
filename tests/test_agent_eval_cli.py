@@ -1,6 +1,6 @@
 import pytest
 
-from parley.evals.agent_eval import build_report, select_scenarios
+from parley.evals.agent_eval import build_report, is_complete, select_scenarios
 from parley.evals.loader import load_scenarios
 from tests.test_eval_report import outcome
 
@@ -28,3 +28,10 @@ def test_report_carries_meta_summary_groups_and_every_outcome() -> None:
     assert set(report["by_category"]) == {"billing", "refund"}
     first = report["outcomes"][0]
     assert first["scenario_id"] == "A" and first["success"] is True and first["handover_ok"] is True
+
+
+def test_incomplete_or_crashed_runs_are_not_complete() -> None:
+    good = [outcome("A"), outcome("B")]
+    assert is_complete(good, 2)
+    assert not is_complete(good, 3)
+    assert not is_complete([outcome("A"), outcome("B", error="RateLimitError")], 2)
