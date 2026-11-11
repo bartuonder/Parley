@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field, computed_field
 
 from parley.agent.result import AgentResult, StopReason, ToolInvocation
@@ -5,6 +7,13 @@ from parley.db.enums import RefundStatus
 from parley.evals.schema import ActionSpec, Scenario, StateDiff
 from parley.evals.state import Snapshot, diff_snapshots, normalize
 from parley.evals.world import WorldIndex
+
+
+class TraceEntry(BaseModel):
+    name: str
+    arguments: dict[str, Any]
+    ok: bool
+    error_code: str | None = None
 
 
 class ScenarioOutcome(BaseModel):
@@ -28,6 +37,7 @@ class ScenarioOutcome(BaseModel):
     completion_tokens: int
     reply: str
     actual_diff: StateDiff
+    trace: list[TraceEntry] = Field(default_factory=list)
     error: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
@@ -97,6 +107,15 @@ def score(
         completion_tokens=result.usage.completion_tokens,
         reply=result.reply,
         actual_diff=actual,
+        trace=[
+            TraceEntry(
+                name=c.name,
+                arguments=c.arguments,
+                ok=c.ok,
+                error_code=None if c.ok else str(c.output.get("error_code")),
+            )
+            for c in result.tool_calls
+        ],
     )
 
 
