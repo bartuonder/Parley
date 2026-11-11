@@ -139,12 +139,12 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 3 kickoff
-1. Propose the plan for the MCP tool layer and the single agent, wait for approval.
+## Today: Phase 4 kickoff
+1. Propose the plan for the LangGraph orchestration, memory, and approval flow, wait for approval.
 2. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
 ## Progress
-- [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4
 - [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
