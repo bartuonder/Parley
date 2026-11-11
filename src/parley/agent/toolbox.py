@@ -47,6 +47,17 @@ class Toolbox:
 
 @asynccontextmanager
 async def open_toolbox(registry: ToolRegistry, ctx: ToolContext) -> AsyncIterator[Toolbox]:
-    async with Client(build_server(registry, ctx)) as client:
-        listing = await client.list_tools()
-        yield Toolbox(client, [openai_tool(t) for t in listing.tools])
+    try:
+        async with Client(build_server(registry, ctx)) as client:
+            listing = await client.list_tools()
+            yield Toolbox(client, [openai_tool(t) for t in listing.tools])
+    except ExceptionGroup as group:
+        raise _first_error(group) from None
+
+
+def _first_error(group: ExceptionGroup[Exception]) -> BaseException:
+    """The client's task group wraps errors raised inside it; callers want the original."""
+    error: BaseException = group
+    while isinstance(error, BaseExceptionGroup) and error.exceptions:
+        error = error.exceptions[0]
+    return error
