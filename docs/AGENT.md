@@ -52,26 +52,20 @@ A run that crashes or stops early does not overwrite the report, and the run abo
 
 The suite also replays every scenario's reference solution through the full stack (MCP, ownership, idempotency, scoring) with a scripted model, so the harness itself is tested without API calls.
 
-## First baseline
+## Baseline
 
-`gpt-4.1-mini`, 55 scenarios, one run each, temperature 0, first version of the prompt. Raw numbers are in `reports/agent_baseline.json`.
+`gpt-4.1-mini`, 55 scenarios, one run each, temperature 0. Two runs, before and after one prompt revision (start from the customer overview, and a stated action must have a matching tool call). The first run is in git history (`reports/agent_baseline.json` at commit `6bb968c`); the file in the tree is the second run.
 
-| Metric | Result | Target |
-| --- | --- | --- |
-| Task success | 94.5% (52 of 55) | >= 80% |
-| Forbidden action attempted | 1.8% (1 of 55) | <= 2% |
-| Handover decision correct | 87.3% | |
-| Tool calls that returned an error | 3.9% | |
-| Mean cost per ticket | $0.0016 | < $0.05 |
-| Latency p50 / p95 | 4.3s / 6.9s | |
+| Metric | Prompt v1 | Prompt v2 | Target |
+| --- | --- | --- | --- |
+| Task success | 94.5% (52 of 55) | 92.7% (51 of 55) | >= 80% |
+| Forbidden action attempted | 1.8% | 0.0% | <= 2% |
+| Handover decision correct | 87.3% | 85.5% | |
+| Tool calls that returned an error | 3.9% | 1.2% | |
+| Mean cost per ticket | $0.0016 | $0.0017 | < $0.05 |
+| Latency p50 / p95 | 4.3s / 6.9s | 3.9s / 5.6s | |
 
-| Category | n | Success |
-| --- | --- | --- |
-| billing | 8 | 88% |
-| refund | 26 | 92% |
-| shipping | 10 | 100% |
-| subscription | 10 | 100% |
-| general | 1 | 100% |
+The two runs are the same within noise: one scenario apart, and the failing scenarios differ. The revision fixed BIL-002 and REF-001 and the next run broke REF-003 and REF-006. Prompt wording alone does not remove the main failure below, and single runs cannot rank two prompts. Success per category (v2): billing 100%, refund 85%, shipping 100%, subscription 100%, general 100%.
 
 ## What the failures show
 
@@ -81,7 +75,12 @@ The suite also replays every scenario's reference solution through the full stac
 - **Over-escalation** in BIL-004 and SHP-008, where the scenario expects a plain denial.
 - **Forbidden attempt** in SUB-003: the agent tried to cancel an already cancelled subscription. The backend refused it and the reply was correct.
 
-The prompt now starts from the customer overview and requires that a stated action has a matching successful tool call. These changes were chosen after reading the failures above on the same scenarios, so a rerun on this set will be optimistic. A rerun and a held-out set belong to Phase 5.
+The second run shows the same pattern with different victims:
+
+- **Claimed actions that never happened.** In SHP-007 the reply said "I have canceled it for you" although no tool can cancel an order and only `get_order` was called. In REF-006 the reply said a refund was processed with no `issue_refund` call.
+- **Wrong order of duties.** In ADV-003 a customer threatened legal action and the agent refunded without handing over, which POL-ESC-003 forbids.
+
+A prompt rule did not stop the first kind. It needs a check outside the model: the policy critic of Phase 4 should compare what the reply claims with the tool trace and the policy before the reply is sent. The prompt revision stays because it fixed real cases, but it was written after reading these scenarios, so its gain on this set is optimistic. Variance across repeated runs (`pass^k`) and a held-out set belong to Phase 5.
 
 ## Limits of the numbers
 
