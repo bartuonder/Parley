@@ -95,3 +95,14 @@ def test_relative_model_cache_dir_is_resolved_against_the_project_root(
 
 def test_dotenv_path_does_not_depend_on_the_working_directory() -> None:
     assert Settings.model_config["env_file"] == PROJECT_ROOT / ".env"
+
+
+def test_agent_limits_have_defaults_and_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    settings = build()
+    assert settings.agent_model == "gpt-4.1-mini"
+    assert settings.agent_max_steps == 10
+    assert settings.agent_max_cost_usd == 0.25
+    monkeypatch.setenv("PARLEY_AGENT_MAX_STEPS", "0")
+    with pytest.raises(ValidationError):
+        build()
