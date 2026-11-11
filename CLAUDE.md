@@ -172,3 +172,10 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-10: The chunk index stores a corpus hash and `default_retriever` refuses a stale index with a clear error. Bump `INDEX_FORMAT_VERSION` whenever chunk text or metadata format changes.
 - 2026-11-10: `.env` and the model cache are resolved from the project root, not the working directory. `PARLEY_FIXED_NOW` is rejected when `PARLEY_ENV` is prod.
 - 2026-11-10: Loaded embedders and the reranker are cached per process; the per-retriever query vector cache is bounded.
+- 2026-11-11: Tools live in one typed registry (`parley.tools`) with read, write, and risky permission levels and are called in process against `Backend`. The MCP server is an adapter over the registry and the agent reaches the tools through an in-memory MCP client, so MCP is the real path without a network hop in evals.
+- 2026-11-11: A tool server is bound to the ticket sender. Records of anyone else return `access_denied` at the tool layer, because the backend itself has no notion of who is asking.
+- 2026-11-11: Refund idempotency keys are derived from ticket, target, and amount, never chosen by the model. Write tools run in a savepoint and commit only on success.
+- 2026-11-11: The agent is a hand-written LiteLLM tool-calling loop with step and per-ticket cost limits; the final plain-text message is the reply, and actions and citations are read from the trace. LangGraph arrives in Phase 4. Default model is `gpt-4.1-mini`, configurable by `PARLEY_AGENT_MODEL`.
+- 2026-11-11: Agent evals run in a separate `<db>_eval` database, each scenario in a rolled-back transaction. A crashed or incomplete run never overwrites the report, and a run aborts after three crashes in a row.
+- 2026-11-11: The handover metric counts an escalation or a new pending-approval refund. It cannot see a pending refund that already existed; Phase 5 refines it.
+- 2026-11-11: `LITELLM_MODE=PRODUCTION` is set before importing litellm, because in DEV mode it copies `.env` into the process environment and bypasses the typed settings.
