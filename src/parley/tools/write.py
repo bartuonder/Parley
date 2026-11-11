@@ -1,12 +1,13 @@
+from enum import StrEnum
 from typing import Any
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from parley.backend.schemas import RefundOut, SubscriptionOut
 from parley.backend.services import RefundTarget
 from parley.db.enums import RefundStatus
 from parley.tools.access import own_invoice, own_order, own_subscription
-from parley.tools.context import ToolContext
+from parley.tools.context import Escalation, ToolContext
 from parley.tools.permissions import Permission
 from parley.tools.registry import ToolParams, ToolSpec
 
@@ -20,6 +21,28 @@ class IssueRefundParams(ToolParams):
 
 class CancelSubscriptionParams(ToolParams):
     subscription_id: int
+
+
+class EscalationReason(StrEnum):
+    LEGAL_THREAT = "legal_threat"
+    SUSPECTED_FRAUD = "suspected_fraud"
+    UNSUPPORTED_REQUEST = "unsupported_request"
+    DISPUTED_INVOICE = "disputed_invoice"
+    INSISTENT_DENIED_REQUEST = "insistent_denied_request"
+    FULFILLMENT_FOLLOW_UP = "fulfillment_follow_up"
+    OTHER = "other"
+
+
+class EscalateParams(ToolParams):
+    reason: EscalationReason
+    summary: str = Field(
+        min_length=1, max_length=500, description="What was asked and what was already checked"
+    )
+
+
+class Escalated(BaseModel):
+    escalated: bool = True
+    reason: EscalationReason
 
 
 class RefundResult(RefundOut):
@@ -58,6 +81,11 @@ def cancel_subscription(ctx: ToolContext, params: CancelSubscriptionParams) -> S
     return SubscriptionOut.model_validate(sub)
 
 
+def escalate_to_human(ctx: ToolContext, params: EscalateParams) -> Escalated:
+    ctx.escalations.append(Escalation(params.reason, params.summary))
+    return Escalated(reason=params.reason)
+
+
 WRITE_TOOLS: list[ToolSpec[Any]] = [
     ToolSpec(
         "issue_refund",
@@ -75,5 +103,14 @@ WRITE_TOOLS: list[ToolSpec[Any]] = [
         Permission.WRITE,
         CancelSubscriptionParams,
         cancel_subscription,
+    ),
+    ToolSpec(
+        "escalate_to_human",
+        "Hand the ticket to a human agent with a short note. Use it when policy says so, when "
+        "no tool can do what the customer asks, or when the case is legal, fraud or dispute "
+        "related. Do not promise an outcome to the customer.",
+        Permission.WRITE,
+        EscalateParams,
+        escalate_to_human,
     ),
 ]
