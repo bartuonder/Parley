@@ -16,6 +16,10 @@ from parley.tools.context import ToolContext
 from parley.tools.permissions import MUTATING, Permission
 
 
+class ToolUnavailableError(Exception):
+    """The tool exists but its dependency is not configured in this run."""
+
+
 class ToolParams(BaseModel):
     """Base for tool arguments; unknown fields are an error the model can see and fix."""
 
@@ -79,6 +83,8 @@ class ToolRegistry:
             return ToolResult.failure("not_found", str(exc))
         except NotEligibleError as exc:
             return ToolResult.failure("not_eligible", exc.code)
+        except ToolUnavailableError as exc:
+            return ToolResult.failure("unavailable", str(exc))
         except IdempotencyConflictError as exc:
             return ToolResult.failure("idempotency_conflict", str(exc))
         except (InvalidRequestError, BackendError) as exc:
