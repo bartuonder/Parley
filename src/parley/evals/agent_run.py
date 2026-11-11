@@ -20,6 +20,8 @@ from parley.tools.context import ToolContext
 
 logger = logging.getLogger(__name__)
 
+MAX_CONSECUTIVE_ERRORS = 3
+
 RetrieverFactory = Callable[[Session], Retriever | None]
 LLMFactory = Callable[[Scenario, WorldIndex], LLMClient]
 
@@ -74,7 +76,11 @@ async def evaluate(
     """Run scenarios one by one, each in a transaction that is rolled back afterwards."""
     outcomes: list[ScenarioOutcome] = []
     spent = 0.0
+    consecutive_errors = 0
     for scenario in scenarios:
+        if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+            logger.error("%d runs in a row crashed, aborting the evaluation", consecutive_errors)
+            break
         if spent >= total_budget_usd:
             logger.warning("total budget of %.2f USD reached, stopping early", total_budget_usd)
             break
@@ -82,6 +88,7 @@ async def evaluate(
             engine, scenario, llm_factory, retriever, model, max_steps, max_cost_usd
         )
         spent += outcome.cost_usd
+        consecutive_errors = consecutive_errors + 1 if outcome.error else 0
         outcomes.append(outcome)
         if on_outcome is not None:
             on_outcome(outcome)
