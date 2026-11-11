@@ -1,4 +1,7 @@
 import asyncio
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 from typing import Any
 
@@ -72,3 +75,13 @@ def test_client_sends_the_configured_model_and_key(monkeypatch: pytest.MonkeyPat
     assert response.content == "hi"
     assert seen["model"] == "test-model" and seen["api_key"] == "sk-test"
     assert seen["tools"] is None and seen["temperature"] == 0
+
+
+def test_importing_the_client_does_not_load_dotenv_into_the_environment() -> None:
+    code = (
+        "import os, parley.agent.llm; "
+        "print(os.environ.get('LITELLM_MODE'), os.environ.get('PARLEY_FIXED_NOW'))"
+    )
+    env = {k: v for k, v in os.environ.items() if k not in ("LITELLM_MODE", "PARLEY_FIXED_NOW")}
+    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
+    assert out.stdout.split() == ["PRODUCTION", "None"], out.stderr
