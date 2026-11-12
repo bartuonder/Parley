@@ -153,3 +153,12 @@ def summarize_repeats(runs: list[list[ScenarioOutcome]]) -> RepeatSummary:
         pass_any=sum(1 for r in results.values() if any(r)) / total if total else 0.0,
         unstable=sorted(sid for sid, r in results.items() if any(r) and not all(r)),
     )
+
+
+def render_repeats(r: RepeatSummary) -> str:
+    unstable = ", ".join(r.unstable) if r.unstable else "none"
+    return (
+        f"\nRepeats: {r.runs} runs. Success {r.success_min:.1%} to {r.success_max:.1%} "
+        f"(mean {r.success_mean:.1%}). Solved in every run (pass^{r.runs}): {r.pass_all:.1%}. "
+        f"Solved in at least one run: {r.pass_any:.1%}. Unstable scenarios: {unstable}.\n"
+    )
