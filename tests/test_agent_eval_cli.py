@@ -1,6 +1,6 @@
 import pytest
 
-from parley.evals.agent_eval import build_report, is_complete, select_scenarios
+from parley.evals.agent_eval import build_report, default_out, is_complete, select_scenarios
 from parley.evals.loader import load_scenarios
 from tests.test_eval_report import outcome
 
@@ -35,3 +35,17 @@ def test_incomplete_or_crashed_runs_are_not_complete() -> None:
     assert is_complete(good, 2)
     assert not is_complete(good, 3)
     assert not is_complete([outcome("A"), outcome("B", error="RateLimitError")], 2)
+
+
+def test_repeated_runs_add_variance_to_the_report() -> None:
+    runs = [[outcome("A")], [outcome("A", state_ok=False)]]
+    flat = [o for run in runs for o in run]
+    report = build_report(flat, "m", {"arch": "multi"}, runs)
+    assert report["repeats"]["runs"] == 2 and report["repeats"]["unstable"] == ["A"]
+    assert len(report["per_run"]) == 2 and report["meta"]["arch"] == "multi"
+    assert "repeats" not in build_report(runs[0], "m", {}, runs[:1])
+
+
+def test_each_architecture_writes_its_own_report() -> None:
+    assert default_out("single").name == "agent_single.json"
+    assert default_out("multi").name == "agent_multi.json"

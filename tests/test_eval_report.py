@@ -4,6 +4,7 @@ from parley.evals.report import (
     group_by,
     percentile,
     render_markdown,
+    render_repeats,
     summarize,
     summarize_repeats,
 )
@@ -113,3 +114,9 @@ def test_repeat_summary_reports_variance_and_pass_all() -> None:
     assert r.success_mean == pytest.approx(5 / 9)
     assert r.pass_all == pytest.approx(1 / 3) and r.pass_any == pytest.approx(2 / 3)
     assert r.unstable == ["B"]
+
+
+def test_repeat_summary_renders_a_readable_line() -> None:
+    runs = [[outcome("A"), outcome("B")], [outcome("A"), outcome("B", state_ok=False)]]
+    text = render_repeats(summarize_repeats(runs))
+    assert "2 runs" in text and "pass^2" in text and "Unstable scenarios: B" in text
