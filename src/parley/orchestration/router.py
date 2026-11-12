@@ -15,6 +15,14 @@ class Specialist(StrEnum):
 
 DEFAULT_SPECIALIST = Specialist.BILLING
 
+CATEGORY_SPECIALIST: dict[str, Specialist] = {
+    "refund": Specialist.BILLING,
+    "billing": Specialist.BILLING,
+    "shipping": Specialist.SHIPPING,
+    "subscription": Specialist.SUBSCRIPTION,
+    "general": Specialist.BILLING,
+}
+
 ROUTER_PROMPT = """\
 You route customer support tickets to one specialist. Answer with exactly one word.
 
