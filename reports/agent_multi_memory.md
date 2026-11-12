@@ -6,21 +6,21 @@ Model: `gpt-4.1-mini`. Scenarios: 12.
 | State matches expected diff | 100.0% |
 | Forbidden action attempted | 0.0% |
 | Reply claims an action that did not happen | 0.0% |
-| Handover decision correct | 50.0% |
+| Handover decision correct | 100.0% |
 | Tool calls that returned an error | 0.0% |
 | Router picked the expected specialist | 100.0% |
-| Mean cost per ticket | $0.0027 |
-| Latency p50 / p95 | 7.1s / 7.9s |
+| Mean cost per ticket | $0.0030 |
+| Latency p50 / p95 | 7.4s / 9.2s |
 
 | Category | n | success | handover | cost |
 | --- | --- | --- | --- | --- |
-| billing | 3 | 100% | 0% | $0.0022 |
-| refund | 9 | 100% | 67% | $0.0028 |
+| billing | 3 | 100% | 100% | $0.0029 |
+| refund | 9 | 100% | 100% | $0.0030 |
 
 | Difficulty | n | success | handover | cost |
 | --- | --- | --- | --- | --- |
-| easy | 6 | 100% | 100% | $0.0030 |
-| medium | 6 | 100% | 0% | $0.0023 |
+| easy | 6 | 100% | 100% | $0.0029 |
+| medium | 6 | 100% | 100% | $0.0031 |
 
 Failed: none
 
