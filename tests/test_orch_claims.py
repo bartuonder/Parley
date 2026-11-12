@@ -26,6 +26,9 @@ def test_completed_refund_statements_are_claims(reply: str) -> None:
         "Once approved, the refund will be processed.",
         "Your refund is pending approval.",
         "If eligible, we would refund the full amount.",
+        "No refund has been processed yet.",
+        "Since the order was cancelled, no refund is issued.",
+        "Your refund has not been issued.",
     ],
 )
 def test_refund_talk_that_is_not_a_completed_action_is_ignored(reply: str) -> None:
