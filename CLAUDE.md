@@ -139,12 +139,12 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 4 kickoff
-1. Propose the plan for the LangGraph orchestration, memory, and approval flow, wait for approval.
+## Today: Phase 5 kickoff
+1. Propose the plan for the evaluation harness (user simulator, judge calibration, regression gate), wait for approval.
 2. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
 ## Progress
-- [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4
+- [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
 - [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
@@ -186,3 +186,4 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-12: Customer memory is a table of short facts built only from what tools did or refused (refund issued or pending, cancellation, handover reason, refund refusal code), never from ticket text, so customers cannot write into it. It sits outside the seed fingerprint and is cleared by a reseed through the foreign key.
 - 2026-11-12: Specialists get least-privilege tool sets; the router uses a small model (`PARLEY_ROUTER_MODEL`) and falls back to billing. The expected specialist per ticket category is a rough mapping used to score routing.
 - 2026-11-12: Architectures are compared with three runs of the full set and `pass^3`, because single runs swing by a scenario. The comparison is optimistic since the multi-agent prompts were written after reading the single-agent failures on the same scenarios.
+- 2026-11-12: Specialist prompts tell the model how to use customer memory: notes are context, repeated refusals of the same request count as insistence, and a past refund or handover alone is no reason for caution. Plain notes without that guidance did not change behavior (handover accuracy 50%); with it, 12 of 12 on the four memory scenarios, a small and tuned demonstration.
