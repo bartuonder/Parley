@@ -7,12 +7,26 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from parley.agent.llm import LLMClient, LLMResponse, Message
-from parley.evals.agent_run import MAX_CONSECUTIVE_ERRORS, LLMFactory, evaluate, run_scenario
+from parley.evals.agent_run import (
+    MAX_CONSECUTIVE_ERRORS,
+    Architecture,
+    LLMFactory,
+    evaluate,
+    run_scenario,
+)
 from parley.evals.loader import load_scenarios
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
 from parley.evals.world import WorldIndex
-from tests.fakes import ScriptedLLM, call_turn, reference_llm, reply_turn
+from parley.orchestration.router import CATEGORY_SPECIALIST
+from tests.fakes import (
+    ScriptedLLM,
+    call_turn,
+    reference_llm,
+    reference_multi_llm,
+    reply_turn,
+    router_for,
+)
 
 SCENARIOS = load_scenarios()
 MODEL = "scripted"
@@ -140,3 +154,45 @@ def test_a_backed_refund_claim_is_not_flagged(session: Session) -> None:
 
     outcome = play(session, scenario, honest)
     assert outcome.success and outcome.unbacked_claims == []
+
+
+MULTI = Architecture(name="multi", router_llm_factory=router_for)
+
+
+@pytest.mark.parametrize("scenario", SCENARIOS, ids=[s.id for s in SCENARIOS])
+def test_reference_plan_scores_perfectly_through_the_multi_agent_graph(
+    scenario: Scenario, session: Session
+) -> None:
+    outcome = asyncio.run(
+        run_scenario(
+            session,
+            scenario,
+            reference_multi_llm,
+            no_retriever,
+            model=MODEL,
+            max_steps=MAX_STEPS,
+            max_cost_usd=MAX_COST,
+            arch=MULTI,
+        )
+    )
+    assert outcome.state_ok and outcome.success and outcome.error is None
+    assert outcome.handover_ok and outcome.forbidden_attempts == []
+    assert outcome.unbacked_claims == [] and outcome.revisions == 0
+    assert outcome.specialist == CATEGORY_SPECIALIST[scenario.category.value].value
+
+
+def test_the_multi_architecture_needs_a_router(session: Session) -> None:
+    scenario = SCENARIOS[0]
+    with pytest.raises(ValueError, match="router"):
+        asyncio.run(
+            run_scenario(
+                session,
+                scenario,
+                reference_multi_llm,
+                no_retriever,
+                model=MODEL,
+                max_steps=MAX_STEPS,
+                max_cost_usd=MAX_COST,
+                arch=Architecture(name="multi"),
+            )
+        )
