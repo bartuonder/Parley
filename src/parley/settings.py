@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     agent_model: str = "gpt-4.1-mini"
     agent_max_steps: int = Field(default=10, ge=1, le=30)
     agent_max_cost_usd: float = Field(default=0.25, gt=0)
+    router_model: str = "gpt-4o-mini"
+    agent_max_revisions: int = Field(default=2, ge=0, le=5)
     fixed_now: datetime | None = None
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
 
