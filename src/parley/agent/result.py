@@ -39,6 +39,7 @@ class AgentResult(BaseModel):
     usage: Usage = Field(default_factory=Usage)
     tool_calls: list[ToolInvocation] = Field(default_factory=list)
     escalations: list[EscalationRecord] = Field(default_factory=list)
+    extras: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def cited_policies(self) -> list[str]:
