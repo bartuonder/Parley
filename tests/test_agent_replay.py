@@ -117,3 +117,26 @@ def test_run_aborts_after_repeated_crashes(engine: Engine) -> None:
 
     outcomes = run_all(engine, SCENARIOS[:10], lambda s, i: Down(), budget=5.0)
     assert len(outcomes) == MAX_CONSECUTIVE_ERRORS
+
+
+def test_a_reply_that_claims_an_unperformed_refund_is_flagged(session: Session) -> None:
+    scenario = next(s for s in SCENARIOS if s.id == "REF-001")
+
+    def liar(s: Scenario, index: WorldIndex) -> LLMClient:
+        return ScriptedLLM([reply_turn("I have processed the refund for you.")])
+
+    outcome = play(session, scenario, liar)
+    assert not outcome.state_ok
+    assert outcome.unbacked_claims == ["refund"]
+
+
+def test_a_backed_refund_claim_is_not_flagged(session: Session) -> None:
+    scenario = next(s for s in SCENARIOS if s.id == "REF-001")
+
+    def honest(s: Scenario, index: WorldIndex) -> LLMClient:
+        llm = reference_llm(s, index)
+        llm._turns[-1] = reply_turn("We have processed the refund.")
+        return llm
+
+    outcome = play(session, scenario, honest)
+    assert outcome.success and outcome.unbacked_claims == []
