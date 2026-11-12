@@ -20,15 +20,16 @@ async def run_ticket(
     model: str,
     max_steps: int,
     max_cost_usd: float,
+    system: str | None = None,
+    notes: str = "",
 ) -> AgentResult:
     """Run the tool-calling loop for one ticket on behalf of the sender in `ctx`."""
     started = time.perf_counter()
+    rendered = render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body)
+    user_text = "\n\n".join(part for part in (rendered, notes) if part)
     messages: list[Message] = [
-        {"role": "system", "content": system_prompt(ctx.backend.now().date())},
-        {
-            "role": "user",
-            "content": render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body),
-        },
+        {"role": "system", "content": system or system_prompt(ctx.backend.now().date())},
+        {"role": "user", "content": user_text},
     ]
     usage = Usage()
     trace: list[ToolInvocation] = []
