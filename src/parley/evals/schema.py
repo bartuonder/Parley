@@ -137,6 +137,14 @@ class Expected(Strict):
     reply_facts: list[str] = Field(default_factory=list)
 
 
+class MemorySpec(Strict):
+    customer: str
+    kind: str
+    content: str
+    ticket_id: str = "T-PRIOR"
+    days_ago: float = 5
+
+
 class Scenario(Strict):
     id: str = Field(pattern=r"^[A-Z]{3}-\d{3}$")
     category: TicketCategory
@@ -148,6 +156,7 @@ class Scenario(Strict):
     expected: Expected
     reference_actions: list[ActionSpec] = Field(default_factory=list)
     forbidden_actions: list[ActionSpec] = Field(default_factory=list)
+    memory: list[MemorySpec] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def aliases_are_unique(self) -> Self:
@@ -159,4 +168,12 @@ class Scenario(Strict):
         duplicates = sorted({a for a in aliases if aliases.count(a) > 1})
         if duplicates:
             raise ValueError(f"duplicate aliases: {duplicates}")
+        return self
+
+    @model_validator(mode="after")
+    def memory_belongs_to_a_customer(self) -> Self:
+        owners = {c.alias for c in self.world}
+        unknown = sorted({m.customer for m in self.memory} - owners)
+        if unknown:
+            raise ValueError(f"memory for unknown customers: {unknown}")
         return self

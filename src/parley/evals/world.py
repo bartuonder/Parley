@@ -16,6 +16,7 @@ from parley.db.models import (
     Subscription,
 )
 from parley.evals.schema import CustomerSpec, Scenario
+from parley.memory.tables import CustomerMemoryRow
 from parley.seed.config import REFERENCE_NOW
 
 
@@ -53,6 +54,7 @@ def build_world(session: Session, scenario: Scenario, now: datetime = REFERENCE_
     for obj_alias, obj in objects.items():
         _register(index, obj_alias, obj)
     _index_refunds(session, scenario, index)
+    _add_memory(session, scenario, index, now)
     return index
 
 
@@ -182,6 +184,20 @@ def _index_refunds(session: Session, scenario: Scenario, index: WorldIndex) -> N
             key = f"{scenario.id}-seed-{r.alias}"
             stmt = select(Refund.id).where(Refund.idempotency_key == key)
             index.refunds[r.alias] = session.execute(stmt).scalar_one()
+
+
+def _add_memory(session: Session, scenario: Scenario, index: WorldIndex, now: datetime) -> None:
+    for spec in scenario.memory:
+        session.add(
+            CustomerMemoryRow(
+                customer_id=index.customers[spec.customer],
+                kind=spec.kind,
+                content=render_text(spec.content, index),
+                ticket_id=spec.ticket_id,
+                created_at=now - timedelta(days=spec.days_ago),
+            )
+        )
+    session.flush()
 
 
 def render_text(text: str, index: WorldIndex) -> str:
