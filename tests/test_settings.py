@@ -106,3 +106,13 @@ def test_agent_limits_have_defaults_and_are_bounded(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("PARLEY_AGENT_MAX_STEPS", "0")
     with pytest.raises(ValidationError):
         build()
+
+
+def test_router_model_and_revision_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    settings = build()
+    assert settings.router_model == "gpt-4o-mini"
+    assert settings.agent_max_revisions == 2
+    monkeypatch.setenv("PARLEY_AGENT_MAX_REVISIONS", "9")
+    with pytest.raises(ValidationError):
+        build()
