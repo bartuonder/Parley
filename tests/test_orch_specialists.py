@@ -46,3 +46,4 @@ def test_memory_is_included_only_when_present() -> None:
     with_memory = specialist_prompt(Specialist.BILLING, date(2026, 6, 1), "- refund denied twice")
     assert "earlier tickets" not in plain
     assert "earlier tickets" in with_memory and "- refund denied twice" in with_memory
+    assert "treat it as insistence" in with_memory and "treat it as insistence" not in plain
