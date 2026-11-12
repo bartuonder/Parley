@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pydantic import BaseModel
 
 from parley.evals.scoring import ScenarioOutcome
+from parley.orchestration.router import CATEGORY_SPECIALIST
 
 
 class Summary(BaseModel):
@@ -14,6 +15,9 @@ class Summary(BaseModel):
     reply_rate: float
     handover_accuracy: float
     forbidden_attempt_rate: float
+    unbacked_claim_rate: float
+    router_accuracy: float | None
+    mean_revisions: float
     error_rate: float
     mean_policy_recall: float | None
     tool_error_rate: float
@@ -44,6 +48,7 @@ def _mean(values: list[float]) -> float:
 
 def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
     recalls = [o.policy_recall for o in outcomes if o.policy_recall is not None]
+    routed = [o for o in outcomes if o.specialist is not None]
     calls = sum(len(o.tool_calls) for o in outcomes)
     latencies = [o.latency_s for o in outcomes]
     return Summary(
@@ -53,6 +58,13 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
         reply_rate=_rate(outcomes, lambda o: o.replied),
         handover_accuracy=_rate(outcomes, lambda o: o.handover_ok),
         forbidden_attempt_rate=_rate(outcomes, lambda o: bool(o.forbidden_attempts)),
+        unbacked_claim_rate=_rate(outcomes, lambda o: bool(o.unbacked_claims)),
+        router_accuracy=(
+            _rate(routed, lambda o: o.specialist == CATEGORY_SPECIALIST[o.category].value)
+            if routed
+            else None
+        ),
+        mean_revisions=_mean([float(o.revisions) for o in outcomes]),
         error_rate=_rate(outcomes, lambda o: o.error is not None),
         mean_policy_recall=_mean(recalls) if recalls else None,
         tool_error_rate=sum(o.tool_errors for o in outcomes) / calls if calls else 0.0,
@@ -84,8 +96,14 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
         f"| Task success (state matches and a reply was written) | {total.success_rate:.1%} |",
         f"| State matches expected diff | {total.state_ok_rate:.1%} |",
         f"| Forbidden action attempted | {total.forbidden_attempt_rate:.1%} |",
+        f"| Reply claims an action that did not happen | {total.unbacked_claim_rate:.1%} |",
         f"| Handover decision correct | {total.handover_accuracy:.1%} |",
         f"| Tool calls that returned an error | {total.tool_error_rate:.1%} |",
+        *(
+            [f"| Router picked the expected specialist | {total.router_accuracy:.1%} |"]
+            if total.router_accuracy is not None
+            else []
+        ),
         f"| Mean cost per ticket | ${total.mean_cost_usd:.4f} |",
         f"| Latency p50 / p95 | {total.latency_p50_s:.1f}s / {total.latency_p95_s:.1f}s |",
     ]
@@ -106,3 +124,32 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
     failed = [o.scenario_id for o in outcomes if not o.success]
     lines += ["", "Failed: " + (", ".join(failed) if failed else "none")]
     return "\n".join(lines) + "\n"
+
+
+class RepeatSummary(BaseModel):
+    runs: int
+    success_mean: float
+    success_min: float
+    success_max: float
+    pass_all: float
+    pass_any: float
+    unstable: list[str]
+
+
+def summarize_repeats(runs: list[list[ScenarioOutcome]]) -> RepeatSummary:
+    """Variance across repeated runs: pass^k is the share of scenarios solved in every run."""
+    rates = [summarize(run).success_rate for run in runs]
+    results: dict[str, list[bool]] = defaultdict(list)
+    for run in runs:
+        for outcome in run:
+            results[outcome.scenario_id].append(outcome.success)
+    total = len(results)
+    return RepeatSummary(
+        runs=len(runs),
+        success_mean=_mean(rates),
+        success_min=min(rates) if rates else 0.0,
+        success_max=max(rates) if rates else 0.0,
+        pass_all=sum(1 for r in results.values() if all(r)) / total if total else 0.0,
+        pass_any=sum(1 for r in results.values() if any(r)) / total if total else 0.0,
+        unstable=sorted(sid for sid, r in results.items() if any(r) and not all(r)),
+    )
