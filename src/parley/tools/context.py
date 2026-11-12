@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Any
 
 from parley.backend.services import Backend
 from parley.rag.retrieval import Retriever
@@ -11,6 +12,14 @@ class Escalation:
     summary: str
 
 
+@dataclass(frozen=True)
+class Proposal:
+    """An action a specialist wants taken; it runs only after review."""
+
+    kind: str
+    arguments: dict[str, Any]
+
+
 @dataclass
 class ToolContext:
     """Everything a tool may touch for one ticket: the backend and the sender's identity."""
@@ -21,3 +30,4 @@ class ToolContext:
     allowed: frozenset[Permission] = ALL_PERMISSIONS
     escalations: list[Escalation] = field(default_factory=list)
     retriever: Retriever | None = None
+    proposals: list[Proposal] = field(default_factory=list)
