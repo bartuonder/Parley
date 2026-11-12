@@ -108,3 +108,24 @@ def test_cost_limit_stops_before_running_more_tools(session: Session, ctx: ToolC
     result = run(llm, ctx, max_cost_usd=0.1)
     assert result.stop_reason == StopReason.BUDGET and result.tool_calls == []
     assert session.get_one(Order, order.id).status == OrderStatus.DELIVERED
+
+
+def test_custom_system_prompt_and_notes_reach_the_model(ctx: ToolContext) -> None:
+    llm = ScriptedLLM([reply_turn("ok")])
+    asyncio.run(
+        run_ticket(
+            llm,
+            default_registry(),
+            ctx,
+            TICKET,
+            model="scripted",
+            max_steps=3,
+            max_cost_usd=1.0,
+            system="Custom rules.",
+            notes="Reviewer note: cite the policy.",
+        )
+    )
+    system, user = llm.requests[0]
+    assert system["content"] == "Custom rules."
+    assert user["content"].endswith("Reviewer note: cite the policy.")
+    assert "<ticket_body>" in user["content"]
