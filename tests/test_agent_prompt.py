@@ -45,3 +45,12 @@ def test_cited_policies_come_from_the_reply_and_policy_search() -> None:
         ],
     )
     assert result.cited_policies == ["POL-REF-001@v2", "POL-GEN-003@v1"]
+
+
+def test_extras_default_to_empty_and_carry_architecture_details() -> None:
+    plain = AgentResult(
+        ticket_id="T-1", model="m", reply="", stop_reason=StopReason.REPLY, steps=1, latency_s=0.0
+    )
+    assert plain.extras == {}
+    rich = plain.model_copy(update={"extras": {"specialist": "billing"}})
+    assert rich.extras["specialist"] == "billing"
