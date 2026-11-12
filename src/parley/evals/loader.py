@@ -5,7 +5,9 @@ from pydantic import ValidationError
 
 from parley.evals.schema import Scenario
 
-DEFAULT_SCENARIO_DIR = Path(__file__).resolve().parents[3] / "data" / "eval" / "scenarios"
+EVAL_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "eval"
+DEFAULT_SCENARIO_DIR = EVAL_DATA_DIR / "scenarios"
+MEMORY_SCENARIO_DIR = EVAL_DATA_DIR / "memory"
 
 
 class ScenarioFormatError(ValueError):
