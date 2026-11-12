@@ -7,6 +7,7 @@ _NOT_DONE = re.compile(
     r"\b(will|would|can|could|may|might|if|once|unless|cannot|can't|unable|pending|awaiting|"
     r"approval|approve|review)\b"
 )
+_NEGATED = re.compile(r"\b(no|not|never|yet|nothing)\b|\w+n't\b")
 _REFUND_DONE = (
     re.compile(
         r"\b(i|we)(?:'ve| have| had)?\s+(?:already |just |now )?(?:fully |partially )?"
@@ -46,7 +47,8 @@ def detect_claims(reply: str) -> set[Claim]:
     """Actions a reply says were taken or are being taken, found with sentence-level patterns."""
     found: set[Claim] = set()
     for sentence in sentences(reply):
-        if not _NOT_DONE.search(sentence) and any(p.search(sentence) for p in _REFUND_DONE):
+        hedged = _NOT_DONE.search(sentence) or _NEGATED.search(sentence)
+        if not hedged and any(p.search(sentence) for p in _REFUND_DONE):
             found.add(Claim.REFUND)
         if _CANCEL_DONE.search(sentence):
             found.add(Claim.CANCEL)
