@@ -3,7 +3,9 @@ import asyncio
 import pytest
 
 from parley.agent.ticket import Ticket
+from parley.db.enums import TicketCategory
 from parley.orchestration.router import (
+    CATEGORY_SPECIALIST,
     DEFAULT_SPECIALIST,
     ROUTER_PROMPT,
     Specialist,
@@ -39,3 +41,7 @@ def test_router_asks_with_the_ticket_and_returns_usage() -> None:
     system, user = llm.requests[0]
     assert system["content"] == ROUTER_PROMPT
     assert "<ticket_body>\nWhere is it?\n</ticket_body>" in user["content"]
+
+
+def test_every_ticket_category_has_an_expected_specialist() -> None:
+    assert set(CATEGORY_SPECIALIST) == {c.value for c in TicketCategory}
