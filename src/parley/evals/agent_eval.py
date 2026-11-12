@@ -9,7 +9,7 @@ from parley.agent.llm import LiteLLMClient
 from parley.db.session import session_scope
 from parley.evals.agent_run import SINGLE, Architecture, evaluate
 from parley.evals.database import recreate_eval_database
-from parley.evals.loader import load_scenarios
+from parley.evals.loader import MEMORY_SCENARIO_DIR, load_scenarios
 from parley.evals.report import (
     RepeatSummary,
     group_by,
@@ -26,8 +26,9 @@ from parley.settings import PROJECT_ROOT, get_settings
 DEFAULT_TOTAL_BUDGET_USD = 3.0
 
 
-def default_out(arch: str) -> Path:
-    return PROJECT_ROOT / "reports" / f"agent_{arch}.json"
+def default_out(arch: str, scenario_set: str = "core") -> Path:
+    suffix = "" if scenario_set == "core" else f"_{scenario_set}"
+    return PROJECT_ROOT / "reports" / f"agent_{arch}{suffix}.json"
 
 
 def select_scenarios(
@@ -130,6 +131,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the agent on the eval scenarios.")
     parser.add_argument("--arch", choices=["single", "multi"], default="single")
+    parser.add_argument("--set", dest="scenario_set", choices=["core", "memory"], default="core")
     parser.add_argument("--repeats", type=int, default=1, help="how many times to run the set")
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
@@ -139,7 +141,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
     args = parser.parse_args()
 
-    scenarios = select_scenarios(load_scenarios(), args.ids, args.category, args.limit)
+    directory = MEMORY_SCENARIO_DIR if args.scenario_set == "memory" else None
+    pool = load_scenarios(directory) if directory else load_scenarios()
+    scenarios = select_scenarios(pool, args.ids, args.category, args.limit)
     runs = asyncio.run(run(args, scenarios))
     settings = get_settings()
     model = args.model or settings.agent_model
@@ -154,6 +158,7 @@ def main() -> None:
 
     limits = {
         "arch": args.arch,
+        "scenario_set": args.scenario_set,
         "repeats": args.repeats,
         "router_model": settings.router_model if args.arch == "multi" else None,
         "max_steps": settings.agent_max_steps,
@@ -161,7 +166,7 @@ def main() -> None:
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
         "total_budget_usd": args.budget,
     }
-    out = args.out or default_out(args.arch)
+    out = args.out or default_out(args.arch, args.scenario_set)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(build_report(flat, model, limits, runs), indent=2) + "\n", "utf-8")
     text = render_markdown(flat, model) + (render_repeats(repeats) if repeats else "")
