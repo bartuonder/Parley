@@ -7,17 +7,27 @@ from typing import Any
 
 from parley.agent.llm import LiteLLMClient
 from parley.db.session import session_scope
-from parley.evals.agent_run import evaluate
+from parley.evals.agent_run import SINGLE, Architecture, evaluate
 from parley.evals.database import recreate_eval_database
 from parley.evals.loader import load_scenarios
-from parley.evals.report import group_by, render_markdown, summarize
+from parley.evals.report import (
+    RepeatSummary,
+    group_by,
+    render_markdown,
+    render_repeats,
+    summarize,
+    summarize_repeats,
+)
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
 from parley.rag.service import build_default_index, default_retriever
 from parley.settings import PROJECT_ROOT, get_settings
 
-DEFAULT_OUT = PROJECT_ROOT / "reports" / "agent_baseline.json"
 DEFAULT_TOTAL_BUDGET_USD = 3.0
+
+
+def default_out(arch: str) -> Path:
+    return PROJECT_ROOT / "reports" / f"agent_{arch}.json"
 
 
 def select_scenarios(
@@ -35,9 +45,12 @@ def select_scenarios(
 
 
 def build_report(
-    outcomes: list[ScenarioOutcome], model: str, limits: dict[str, Any]
+    outcomes: list[ScenarioOutcome],
+    model: str,
+    limits: dict[str, Any],
+    runs: list[list[ScenarioOutcome]] | None = None,
 ) -> dict[str, Any]:
-    return {
+    report: dict[str, Any] = {
         "meta": {"model": model, "run_at": datetime.now(UTC).isoformat(), **limits},
         "summary": summarize(outcomes).model_dump(),
         "by_category": {
@@ -48,6 +61,10 @@ def build_report(
         },
         "outcomes": [o.model_dump(mode="json") for o in outcomes],
     }
+    if runs is not None and len(runs) > 1:
+        report["repeats"] = summarize_repeats(runs).model_dump()
+        report["per_run"] = [summarize(run).model_dump() for run in runs]
+    return report
 
 
 def is_complete(outcomes: list[ScenarioOutcome], expected: int) -> bool:
@@ -58,65 +75,97 @@ def is_complete(outcomes: list[ScenarioOutcome], expected: int) -> bool:
 def print_progress(outcome: ScenarioOutcome) -> None:
     flag = "ok  " if outcome.success else "FAIL"
     extra = f" error={outcome.error}" if outcome.error else ""
+    route = f" via={outcome.specialist}" if outcome.specialist else ""
     print(
         f"{outcome.scenario_id:8} {flag} ${outcome.cost_usd:.4f} {outcome.latency_s:5.1f}s "
-        f"calls={len(outcome.tool_calls)}{extra}",
+        f"calls={len(outcome.tool_calls)}{route}{extra}",
         flush=True,
     )
 
 
-async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[ScenarioOutcome]:
+async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[ScenarioOutcome]]:
     settings = get_settings()
     if settings.llm_api_key is None:
         raise SystemExit("PARLEY_LLM_API_KEY is not set")
     model = args.model or settings.agent_model
     engine = recreate_eval_database()
+    arch = SINGLE
+    if args.arch == "multi":
+        router = LiteLLMClient(model=settings.router_model)
+        arch = Architecture(
+            name="multi",
+            router_llm_factory=lambda scenario, index: router,
+            max_revisions=settings.agent_max_revisions,
+        )
     try:
         with session_scope(engine) as session:
             build_default_index(session)
         client = LiteLLMClient(model=model)
-        return await evaluate(
-            engine,
-            scenarios,
-            lambda scenario, index: client,
-            lambda session: default_retriever(session),
-            model=model,
-            max_steps=settings.agent_max_steps,
-            max_cost_usd=settings.agent_max_cost_usd,
-            total_budget_usd=args.budget,
-            on_outcome=print_progress,
-        )
+        runs: list[list[ScenarioOutcome]] = []
+        spent = 0.0
+        for number in range(1, args.repeats + 1):
+            print(f"--- {args.arch} run {number} of {args.repeats}", flush=True)
+            outcomes = await evaluate(
+                engine,
+                scenarios,
+                lambda scenario, index: client,
+                lambda session: default_retriever(session),
+                model=model,
+                max_steps=settings.agent_max_steps,
+                max_cost_usd=settings.agent_max_cost_usd,
+                total_budget_usd=args.budget,
+                on_outcome=print_progress,
+                arch=arch,
+                already_spent_usd=spent,
+            )
+            spent += sum(o.cost_usd for o in outcomes)
+            runs.append(outcomes)
+            if not is_complete(outcomes, len(scenarios)):
+                break
+        return runs
     finally:
         engine.dispose()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the agent on the eval scenarios.")
+    parser.add_argument("--arch", choices=["single", "multi"], default="single")
+    parser.add_argument("--repeats", type=int, default=1, help="how many times to run the set")
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
     parser.add_argument("--limit", type=int, help="run at most this many scenarios")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
     args = parser.parse_args()
 
     scenarios = select_scenarios(load_scenarios(), args.ids, args.category, args.limit)
-    outcomes = asyncio.run(run(args, scenarios))
+    runs = asyncio.run(run(args, scenarios))
     settings = get_settings()
     model = args.model or settings.agent_model
-    print(render_markdown(outcomes, model))
-    if not is_complete(outcomes, len(scenarios)):
+    flat = [o for run_outcomes in runs for o in run_outcomes]
+    repeats: RepeatSummary | None = summarize_repeats(runs) if len(runs) > 1 else None
+    print(render_markdown(flat, model))
+    if repeats is not None:
+        print(render_repeats(repeats))
+    complete = len(runs) == args.repeats and all(is_complete(r, len(scenarios)) for r in runs)
+    if not complete:
         raise SystemExit("run incomplete or had crashed scenarios; report not written")
 
     limits = {
+        "arch": args.arch,
+        "repeats": args.repeats,
+        "router_model": settings.router_model if args.arch == "multi" else None,
         "max_steps": settings.agent_max_steps,
         "max_cost_usd": settings.agent_max_cost_usd,
+        "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
         "total_budget_usd": args.budget,
     }
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    report = build_report(outcomes, model, limits)
-    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    args.out.with_suffix(".md").write_text(render_markdown(outcomes, model), encoding="utf-8")
+    out = args.out or default_out(args.arch)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(build_report(flat, model, limits, runs), indent=2) + "\n", "utf-8")
+    text = render_markdown(flat, model) + (render_repeats(repeats) if repeats else "")
+    out.with_suffix(".md").write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":
