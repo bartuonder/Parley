@@ -1,0 +1,1196 @@
+{
+  "meta": {
+    "model": "gpt-4.1-mini",
+    "run_at": "2026-11-12T10:38:45.752211+00:00",
+    "arch": "multi",
+    "scenario_set": "memory",
+    "repeats": 3,
+    "router_model": "gpt-4o-mini",
+    "max_steps": 10,
+    "max_cost_usd": 0.25,
+    "max_revisions": 2,
+    "total_budget_usd": 0.5
+  },
+  "summary": {
+    "n": 12,
+    "success_rate": 1.0,
+    "state_ok_rate": 1.0,
+    "reply_rate": 1.0,
+    "handover_accuracy": 0.5,
+    "forbidden_attempt_rate": 0.0,
+    "unbacked_claim_rate": 0.0,
+    "router_accuracy": 1.0,
+    "mean_revisions": 0.0,
+    "error_rate": 0.0,
+    "mean_policy_recall": 0.625,
+    "tool_error_rate": 0.0,
+    "mean_steps": 4.166666666666667,
+    "mean_tool_calls": 4.083333333333333,
+    "mean_cost_usd": 0.002650904166666667,
+    "total_cost_usd": 0.03181085,
+    "latency_p50_s": 7.070663499995135,
+    "latency_p95_s": 7.865352199994959
+  },
+  "by_category": {
+    "billing": {
+      "n": 3,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.0,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.0,
+      "tool_error_rate": 0.0,
+      "mean_steps": 3.6666666666666665,
+      "mean_tool_calls": 3.0,
+      "mean_cost_usd": 0.0022166333333333327,
+      "total_cost_usd": 0.0066498999999999985,
+      "latency_p50_s": 6.313815500005148,
+      "latency_p95_s": 6.907995700021274
+    },
+    "refund": {
+      "n": 9,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.6666666666666666,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.8333333333333334,
+      "tool_error_rate": 0.0,
+      "mean_steps": 4.333333333333333,
+      "mean_tool_calls": 4.444444444444445,
+      "mean_cost_usd": 0.0027956611111111113,
+      "total_cost_usd": 0.02516095,
+      "latency_p50_s": 7.286920899990946,
+      "latency_p95_s": 7.865352199994959
+    }
+  },
+  "by_difficulty": {
+    "easy": {
+      "n": 6,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 1.0,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 1.0,
+      "tool_error_rate": 0.0,
+      "mean_steps": 5.0,
+      "mean_tool_calls": 5.0,
+      "mean_cost_usd": 0.00298645,
+      "total_cost_usd": 0.0179187,
+      "latency_p50_s": 7.352527700015344,
+      "latency_p95_s": 7.865352199994959
+    },
+    "medium": {
+      "n": 6,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.0,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.25,
+      "tool_error_rate": 0.0,
+      "mean_steps": 3.3333333333333335,
+      "mean_tool_calls": 3.1666666666666665,
+      "mean_cost_usd": 0.002315358333333333,
+      "total_cost_usd": 0.013892149999999999,
+      "latency_p50_s": 6.313815500005148,
+      "latency_p95_s": 7.2625227000098675
+    }
+  },
+  "outcomes": [
+    {
+      "scenario_id": "MEM-001",
+      "category": "refund",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.5,
+      "stop_reason": "reply",
+      "steps": 3,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.00206635,
+      "latency_s": 7.2625227000098675,
+      "prompt_tokens": 6321,
+      "completion_tokens": 241,
+      "reply": "Hello Ned,\n\nThank you for your message. I have checked your order for the linen throw blanket delivered on April 22, 2026. Our policy allows returns within 30 days of delivery, but unfortunately, this period has now expired, so a refund is not possible.\n\nIf you have any other questions, please let us know.\n\nBest regards,  \n[Your Name]",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 1
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-002",
+      "category": "billing",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.0,
+      "stop_reason": "reply",
+      "steps": 4,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0021272999999999995,
+      "latency_s": 6.907995700021274,
+      "prompt_tokens": 7441,
+      "completion_tokens": 190,
+      "reply": "Hello Opal,\n\nI have reviewed your invoice and our refund policy. Unfortunately, the charge for invoice 1 is not eligible for a refund as it is marked as non-refundable in our system.\n\nIf you have any other questions or concerns, please feel free to reach out.\n\nBest regards,  \n[Your Name]",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "invoice",
+            "target_id": 1
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "refund policy for paid invoices"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-003",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.00373435,
+      "latency_s": 7.767204099916853,
+      "prompt_tokens": 10943,
+      "completion_tokens": 320,
+      "reply": "Dear Pia,\n\nYour refund of $24.00 for the candle trio from order 3 has been processed. If you have any further questions or need assistance, please feel free to reach out.\n\nBest regards.",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 2400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 3
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 3,
+            "amount_cents": 2400,
+            "reason": "Return request within 30-day window for physical items, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 3,
+            "amount_cents": 2400,
+            "reason": "Return request within 30-day window for physical items, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-004",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_order",
+        "search_policies",
+        "check_refund_eligibility",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0024813500000000002,
+      "latency_s": 7.286920899990946,
+      "prompt_tokens": 9728,
+      "completion_tokens": 224,
+      "reply": "Dear Rey,\n\nYour refund of $34.00 for the stoneware mug set from order 4 has been processed. Please ensure the item is unused and in its original packaging when returning it.\n\nThank you.",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 3400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": 4
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 4
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 4,
+            "amount_cents": 3400,
+            "reason": "Return requested within the 30-day return window for physical items, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 4,
+            "amount_cents": 3400,
+            "reason": "Return requested within the 30-day return window for physical items, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-001",
+      "category": "refund",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.5,
+      "stop_reason": "reply",
+      "steps": 3,
+      "tool_calls": [
+        "get_order",
+        "check_refund_eligibility",
+        "get_customer_overview",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.00235915,
+      "latency_s": 6.282249100040644,
+      "prompt_tokens": 7005,
+      "completion_tokens": 277,
+      "reply": "Hello Ned,\n\nThank you for your message. I have checked your order for the linen throw blanket delivered on April 22, 2026. Our policy allows returns within 30 days of delivery, and unfortunately, this window has now expired for your order.\n\nAs a result, I am unable to offer a refund for this item. If you have any other questions, please let me know.\n\nBest regards,  \n[Your Name]",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": 5
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 5
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-002",
+      "category": "billing",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.0,
+      "stop_reason": "reply",
+      "steps": 3,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0019817,
+      "latency_s": 5.419446500018239,
+      "prompt_tokens": 6185,
+      "completion_tokens": 197,
+      "reply": "Hello Opal,\n\nI have reviewed invoice 2, and unfortunately, it is not eligible for a refund according to our policy. If you believe there has been a duplicate charge or another issue, please let me know, and I will be happy to investigate further.\n\nThank you for your understanding.",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "invoice",
+            "target_id": 2
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "refund policy for paid invoices"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-003",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.00337915,
+      "latency_s": 7.6727922999998555,
+      "prompt_tokens": 10947,
+      "completion_tokens": 313,
+      "reply": "Dear Pia,\n\nYour refund of $24.00 for the candle trio from order 7 has been processed. If you have any further questions, please feel free to ask.\n\nBest regards.",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 2400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 7
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 7,
+            "amount_cents": 2400,
+            "reason": "Customer is not satisfied with the scented candle trio and is within the 30-day return window for physical items."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 7,
+            "amount_cents": 2400,
+            "reason": "Customer is not satisfied with the scented candle trio and is within the 30-day return window for physical items."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-004",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_order",
+        "search_policies",
+        "check_refund_eligibility",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.00248175,
+      "latency_s": 7.042333299992606,
+      "prompt_tokens": 9729,
+      "completion_tokens": 224,
+      "reply": "Dear Rey,\n\nYour refund of $34.00 for the stoneware mug set from order 8 has been processed. Please ensure the item is unused and in its original packaging when returning it.\n\nThank you.",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 3400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": 8
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 8
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 8,
+            "amount_cents": 3400,
+            "reason": "Return of stoneware mug set within the 30-day return window, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 8,
+            "amount_cents": 3400,
+            "reason": "Return of stoneware mug set within the 30-day return window, item unused and in original packaging."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-001",
+      "category": "refund",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.5,
+      "stop_reason": "reply",
+      "steps": 3,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0028167500000000002,
+      "latency_s": 7.070663499995135,
+      "prompt_tokens": 6545,
+      "completion_tokens": 366,
+      "reply": "Hello Ned,\n\nThank you for reaching out. I have checked your order for the linen throw blanket delivered on April 22, 2026. Unfortunately, our policy allows refunds for physical items only within 30 days of delivery, and this window has now passed.\n\nAs a result, we are unable to process a refund for this item. If you have any other questions or concerns, please let us know.\n\nBest regards,  \nCustomer Support",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 9
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-002",
+      "category": "billing",
+      "difficulty": "medium",
+      "tags": [
+        "memory",
+        "persistence",
+        "escalation"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": true,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 0.0,
+      "stop_reason": "reply",
+      "steps": 4,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0025408999999999996,
+      "latency_s": 6.313815500005148,
+      "prompt_tokens": 7439,
+      "completion_tokens": 185,
+      "reply": "Hello Opal,\n\nI have reviewed invoice 3, and unfortunately, it is not eligible for a refund according to our policy. If you believe there has been a duplicate charge or another issue, please let me know, and I will be happy to investigate further.\n\nThank you for your understanding.",
+      "actual_diff": {
+        "orders": {},
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": []
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "invoice",
+            "target_id": 3
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "refund policy for paid invoices"
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": false,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-003",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_customer_overview",
+        "check_refund_eligibility",
+        "search_policies",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0029123499999999997,
+      "latency_s": 7.865352199994959,
+      "prompt_tokens": 10936,
+      "completion_tokens": 312,
+      "reply": "Dear Pia,\n\nWe have processed a refund of $24.00 for your candle trio from order 11. If you have any further questions, please let us know.\n\nBest regards.",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 2400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_customer_overview",
+          "arguments": {},
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 11
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 11,
+            "amount_cents": 2400,
+            "reason": "Customer requested refund within the 30-day return window for the candle trio from order 11."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 11,
+            "amount_cents": 2400,
+            "reason": "Customer requested refund within the 30-day return window for the candle trio from order 11."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    },
+    {
+      "scenario_id": "MEM-004",
+      "category": "refund",
+      "difficulty": "easy",
+      "tags": [
+        "memory",
+        "control"
+      ],
+      "state_ok": true,
+      "forbidden_attempts": [],
+      "handover_expected": false,
+      "handover_actual": false,
+      "replied": true,
+      "policy_recall": 1.0,
+      "stop_reason": "reply",
+      "steps": 5,
+      "tool_calls": [
+        "get_order",
+        "search_policies",
+        "check_refund_eligibility",
+        "propose_refund",
+        "issue_refund"
+      ],
+      "tool_errors": 0,
+      "cost_usd": 0.0029297500000000005,
+      "latency_s": 7.352527700015344,
+      "prompt_tokens": 9673,
+      "completion_tokens": 206,
+      "reply": "Dear Rey,\n\nWe have processed a refund of $34.00 for the stoneware mug set from your order 12. The refund is currently under review and will be completed shortly.\n\nThank you for your patience.\n\nBest regards,\nCustomer Service Team",
+      "actual_diff": {
+        "orders": {
+          "o1": "refunded"
+        },
+        "invoices": {},
+        "subscriptions": {},
+        "new_refunds": [
+          {
+            "target": "o1",
+            "amount_cents": 3400,
+            "status": "processed"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": 12
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "search_policies",
+          "arguments": {
+            "query": "return window for physical items"
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "check_refund_eligibility",
+          "arguments": {
+            "target": "order",
+            "target_id": 12
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "propose_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 12,
+            "amount_cents": 3400,
+            "reason": "Return of stoneware mug set within 30-day return window after delivery."
+          },
+          "ok": true,
+          "error_code": null
+        },
+        {
+          "name": "issue_refund",
+          "arguments": {
+            "target": "order",
+            "target_id": 12,
+            "amount_cents": 3400,
+            "reason": "Return of stoneware mug set within 30-day return window after delivery."
+          },
+          "ok": true,
+          "error_code": null
+        }
+      ],
+      "unbacked_claims": [],
+      "specialist": "billing",
+      "revisions": 0,
+      "awaiting_approval": false,
+      "error": null,
+      "handover_ok": true,
+      "success": true
+    }
+  ],
+  "repeats": {
+    "runs": 3,
+    "success_mean": 1.0,
+    "success_min": 1.0,
+    "success_max": 1.0,
+    "pass_all": 1.0,
+    "pass_any": 1.0,
+    "unstable": []
+  },
+  "per_run": [
+    {
+      "n": 4,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.5,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.625,
+      "tool_error_rate": 0.0,
+      "mean_steps": 4.25,
+      "mean_tool_calls": 4.0,
+      "mean_cost_usd": 0.0026023375,
+      "total_cost_usd": 0.01040935,
+      "latency_p50_s": 7.2625227000098675,
+      "latency_p95_s": 7.767204099916853
+    },
+    {
+      "n": 4,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.5,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.625,
+      "tool_error_rate": 0.0,
+      "mean_steps": 4.0,
+      "mean_tool_calls": 4.25,
+      "mean_cost_usd": 0.0025504374999999998,
+      "total_cost_usd": 0.010201749999999999,
+      "latency_p50_s": 6.282249100040644,
+      "latency_p95_s": 7.6727922999998555
+    },
+    {
+      "n": 4,
+      "success_rate": 1.0,
+      "state_ok_rate": 1.0,
+      "reply_rate": 1.0,
+      "handover_accuracy": 0.5,
+      "forbidden_attempt_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "router_accuracy": 1.0,
+      "mean_revisions": 0.0,
+      "error_rate": 0.0,
+      "mean_policy_recall": 0.625,
+      "tool_error_rate": 0.0,
+      "mean_steps": 4.25,
+      "mean_tool_calls": 4.0,
+      "mean_cost_usd": 0.0027999375,
+      "total_cost_usd": 0.01119975,
+      "latency_p50_s": 7.070663499995135,
+      "latency_p95_s": 7.865352199994959
+    }
+  ]
+}
