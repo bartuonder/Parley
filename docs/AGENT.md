@@ -105,9 +105,43 @@ The second run shows the same pattern with different victims:
 
 A prompt rule did not stop the first kind. It needs a check outside the model: the policy critic of Phase 4 should compare what the reply claims with the tool trace and the policy before the reply is sent. The prompt revision stays because it fixed real cases, but it was written after reading these scenarios, so its gain on this set is optimistic. Variance across repeated runs (`pass^k`) and a held-out set belong to Phase 5.
 
+## Single agent against multi-agent
+
+Same 55 scenarios, same answer model (`gpt-4.1-mini`), three runs of the whole set per architecture (165 tickets each). The multi-agent router is `gpt-4o-mini`. Raw data: `reports/agent_single.json` and `reports/agent_multi.json`; the table comes from `python -m parley.evals.compare`.
+
+| Metric | Single agent | Multi-agent |
+| --- | --- | --- |
+| Task success per run (mean, range) | 91.5% (90.9% to 92.7%) | 99.4% (98.2% to 100.0%) |
+| Solved in every one of 3 runs (pass^3) | 89.1% | 98.2% |
+| Forbidden action attempted | 0.0% | 0.0% |
+| Reply claims an action that did not happen | 1.8% | 0.0% |
+| Handover decision correct | 89.7% | 87.3% |
+| Tool calls with an error | 0.6% | 0.8% |
+| Router picked the expected specialist | n/a | 85.5% |
+| Mean cost per ticket | $0.0020 | $0.0026 |
+| Latency p50 / p95 | 3.6s / 4.9s | 7.0s / 9.4s |
+
+What the numbers say:
+
+- **Reliability is the gain.** Success rises by about 8 points and pass^3 by 9. The single agent fails the same scenarios every run (ADV-003, REF-016, SHP-002) and wobbles on a few more; the multi-agent graph fails one scenario in one run (ADV-008).
+- **Replies match actions.** Three of 165 single-agent replies claimed a refund or a cancellation that never happened (SHP-007, REF-011, REF-016); none of the multi-agent replies did, because the final reply is written from executed outcomes. The first claim detector counted negated sentences ("no refund has been issued") as claims; it was fixed and both reports were rescored with the stored replies.
+- **Legal threats are handled.** ADV-003 was refunded in all three single-agent runs and handed over in every multi-agent run, which the legal-threat rule in the critic guarantees.
+- **Cost and latency.** The graph costs about 30% more per ticket ($0.0026, against a target below $0.05) and takes about twice as long (p50 7.0s) because triage, specialist, critic, and responder run in sequence.
+- **Handover accuracy did not improve** (89.7% to 87.3%). The multi-agent graph hands over too often: REF-013, REF-014, and SHP-008 are handed over in all three runs where the scenario expects a plain answer, and ADV-004, ADV-006, ADV-007, and SHP-010 sometimes. The critic, which also looks for missing handovers, pushes toward caution. ADV-005 (insistence) is under-escalated in two runs. REF-019 counts as a miss in every run because a pending refund already existed, which the metric cannot see.
+- **Fraud pattern is the weak spot.** ADV-008 (a fourth refund request after three recent ones) was handed over twice and refunded once. There is no rule for it; only the model-based check can catch it.
+- **Routing** matches the expected specialist in 85.5% of tickets. Of the 24 misses, 15 are subscription tickets about renewal charges (SUB-005, SUB-006, SUB-007, SUB-009, SUB-010) that went to billing, and 9 are refund or general tickets about a lost or damaged parcel that went to shipping. In these cases the other specialist can also solve the ticket, so success is not affected; the expected-specialist mapping is a rough stand-in for a label.
+
+The per-ticket cost of the graph is 1.3 times the single agent's, and the whole comparison cost about 0.76 USD.
+
+What the comparison does not show:
+
+- The specialist prompts and the critic rules were written after reading the single-agent failures on these same scenarios. The gain on this set is optimistic, and a held-out set is needed before trusting the size of the gap (Phase 5).
+- Architecture and prompt changed together. No ablation separates the effect of the proposal step, the critic, the specialists, or the responder yet.
+- Three runs per architecture bound the variance only roughly.
+
 ## Limits of the numbers
 
-- One run per scenario. Run-to-run variance is not measured yet; `pass^k` comes with Phase 5.
+- The Phase 3 baseline is one run per scenario. The architecture comparison uses three runs and reports `pass^3`; the full reliability metric (`k = 4`) and a held-out set come with Phase 5.
 - 55 scenarios, one model, and a customer who never answers back. The user simulator is Phase 5.
 - The handover metric cannot see a pending refund that already existed (REF-019 counts as a miss although the reply was right).
-- The reply is not graded for wording or facts yet; `reply_facts` is scored in Phase 5.
+- The reply is not graded for wording or facts yet; `reply_facts` is scored in Phase 5. The claimed-action metric is a sentence-level pattern match, not a judge, so it can miss paraphrases.
