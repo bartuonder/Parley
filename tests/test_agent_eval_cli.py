@@ -49,3 +49,8 @@ def test_repeated_runs_add_variance_to_the_report() -> None:
 def test_each_architecture_writes_its_own_report() -> None:
     assert default_out("single").name == "agent_single.json"
     assert default_out("multi").name == "agent_multi.json"
+
+
+def test_the_memory_set_writes_its_own_report_files() -> None:
+    assert default_out("multi", "memory").name == "agent_multi_memory.json"
+    assert default_out("single", "core").name == "agent_single.json"
