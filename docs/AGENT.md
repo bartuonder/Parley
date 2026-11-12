@@ -33,12 +33,35 @@ A single agent that handles one ticket: it reads the sender's records through to
 
 Default model is `gpt-4.1-mini` (`PARLEY_AGENT_MODEL`).
 
+## Multi-agent graph
+
+The Phase 4 pipeline lives in `src/parley/orchestration/` and is a LangGraph graph. The single agent above stays available for comparison (`--arch single`).
+
+```
+triage -> specialist -> critic -> execute -> respond -> remember -> [approval pause]
+              ^            |
+              +-- revise --+   (after the retry limit: forced handover)
+```
+
+- **Triage.** A small model (`PARLEY_ROUTER_MODEL`, default `gpt-4o-mini`) answers with one word: billing, shipping, or subscription. Anything unclear goes to billing.
+- **Specialists.** One prompt and one least-privilege tool set per domain. Only the subscription specialist can propose a cancellation, only billing and shipping read orders, only shipping reads shipments.
+- **Propose, then execute.** Specialists hold no write tool. `propose_refund`, `propose_cancel_subscription`, and `propose_escalation` validate the request now (ownership, eligibility, amount) and record it. Nothing changes in the database until the critic has approved.
+- **Critic.** Rules first: a ticket that threatens legal action or a regulator must get a handover and nothing else (POL-ESC-003). If the rules pass, a model compares the proposal and the draft with the policy passages and record data the specialist saw. A rejection sends feedback back to the specialist, at most `PARLEY_AGENT_MAX_REVISIONS` times; after that the plan is replaced by a handover to a human.
+- **Executor.** Runs approved proposals with the real tools, handovers last. Results, including failures, are recorded.
+- **Responder.** Writes the final reply from what really happened. If the reply still claims a refund, a cancellation, or a handover that did not happen, it is rewritten once.
+- **Approval pause.** A refund above the threshold is created as pending, the customer is told it is under review, and the graph pauses with a LangGraph interrupt. A human decision resumes it: the refund is approved or declined and a follow-up line is produced. The state is stored by a Postgres checkpointer (`orchestration/checkpoint.py`), so the ticket survives a restart; a test resumes it in a fresh process. LangGraph keeps its tables itself (`setup()`), outside Alembic.
+- **Customer memory.** After every ticket the graph stores short facts in `customer_memory`: refunds issued or pending, cancellations, handovers (reason only), and refunds the policy refused (reason code). Facts come from what tools did, never from ticket text, so a customer cannot write into the memory. The newest eight are shown to the specialist on the next ticket.
+
 ## Evaluating
 
 ```
-make agent-eval                              # all scenarios, about 10 cents
-make agent-eval ARGS="--ids REF-001 ADV-001" # selected scenarios
+make agent-eval                                      # single agent, all scenarios, about 10 cents
+make agent-eval ARGS="--arch multi --repeats 3"      # multi-agent graph, three runs of the set
+make agent-eval ARGS="--ids REF-001 ADV-001"         # selected scenarios
+python -m parley.evals.compare reports/agent_single.json reports/agent_multi.json
 ```
+
+Reports are written to `reports/agent_<arch>.json` and `.md`.
 
 Each scenario builds its own world in a throwaway `<db>_eval` database, runs the agent, and is rolled back afterwards. It is scored on:
 
