@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from parley.db.base import Base
 from parley.db.models import Customer, Invoice, Order, Refund, Shipment, Subscription, Ticket
+from parley.memory.tables import MEMORY_TABLES
 from parley.policies.loader import load_policies
 from parley.rag.tables import INDEX_TABLES
 from parley.seed.config import SeedConfig
@@ -39,7 +40,7 @@ def build_world(cfg: SeedConfig) -> World:
 
 
 def world_tables() -> list[Table]:
-    return [t for t in Base.metadata.sorted_tables if t.name not in INDEX_TABLES]
+    return [t for t in Base.metadata.sorted_tables if t.name not in INDEX_TABLES | MEMORY_TABLES]
 
 
 def reset_database(session: Session) -> None:
