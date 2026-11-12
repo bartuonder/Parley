@@ -1,4 +1,12 @@
-from parley.evals.report import group_by, percentile, render_markdown, summarize
+import pytest
+
+from parley.evals.report import (
+    group_by,
+    percentile,
+    render_markdown,
+    summarize,
+    summarize_repeats,
+)
 from parley.evals.schema import StateDiff
 from parley.evals.scoring import ScenarioOutcome
 
@@ -80,3 +88,28 @@ def test_grouping_and_markdown() -> None:
     text = render_markdown(outcomes, "test-model")
     assert "`test-model`" in text and "| refund | 1 | 100% |" in text
     assert "Failed: B" in text
+
+
+def test_unbacked_claims_and_router_accuracy_are_summarized() -> None:
+    routed_right = outcome("A", category="shipping").model_copy(update={"specialist": "shipping"})
+    routed_wrong = outcome("B", category="billing").model_copy(
+        update={"specialist": "shipping", "unbacked_claims": ["refund"], "revisions": 2}
+    )
+    s = summarize([routed_right, routed_wrong])
+    assert s.router_accuracy == 0.5 and s.unbacked_claim_rate == 0.5 and s.mean_revisions == 1.0
+    assert summarize([outcome("C")]).router_accuracy is None
+    text = render_markdown([routed_right, routed_wrong], "m")
+    assert "Reply claims an action that did not happen | 50.0%" in text
+    assert "Router picked the expected specialist | 50.0%" in text
+
+
+def test_repeat_summary_reports_variance_and_pass_all() -> None:
+    run1 = [outcome("A"), outcome("B"), outcome("C", state_ok=False)]
+    run2 = [outcome("A"), outcome("B", state_ok=False), outcome("C", state_ok=False)]
+    run3 = [outcome("A"), outcome("B"), outcome("C", state_ok=False)]
+    r = summarize_repeats([run1, run2, run3])
+    assert r.runs == 3
+    assert r.success_min == pytest.approx(1 / 3) and r.success_max == pytest.approx(2 / 3)
+    assert r.success_mean == pytest.approx(5 / 9)
+    assert r.pass_all == pytest.approx(1 / 3) and r.pass_any == pytest.approx(2 / 3)
+    assert r.unstable == ["B"]
