@@ -55,3 +55,39 @@ def reference_llm(scenario: Scenario, index: WorldIndex) -> ScriptedLLM:
         turns.append(call_turn("escalate_to_human", json.dumps(handover), "c-esc"))
     turns.append(reply_turn("Done."))
     return ScriptedLLM(turns)
+
+
+def reference_multi_llm(scenario: Scenario, index: WorldIndex) -> ScriptedLLM:
+    """Specialist, critic and responder turns that carry out the reference solution."""
+    turns: list[LLMResponse] = []
+    proposal_tool = {
+        "issue_refund": "propose_refund",
+        "cancel_subscription": "propose_cancel_subscription",
+    }
+    for n, action in enumerate(scenario.reference_actions, start=1):
+        if action.tool == "cancel_subscription":
+            args: dict[str, Any] = {"subscription_id": index.subscriptions[action.alias]}
+        else:
+            ids = index.orders if action.target == "order" else index.invoices
+            args = {
+                "target": action.target,
+                "target_id": ids[action.alias],
+                "amount_cents": action.amount_cents,
+                "reason": "reference",
+            }
+        turns.append(call_turn(proposal_tool[action.tool], json.dumps(args), f"p{n}"))
+    if scenario.expected.requires_human and not scenario.reference_actions:
+        handover = {"reason": "other", "summary": "reference handover"}
+        turns.append(call_turn("propose_escalation", json.dumps(handover), "p-esc"))
+    turns += [
+        reply_turn("Draft."),
+        reply_turn('{"approved": true, "issues": []}'),
+        reply_turn("Done."),
+    ]
+    return ScriptedLLM(turns)
+
+
+def router_for(scenario: Scenario, index: WorldIndex) -> ScriptedLLM:
+    from parley.orchestration.router import CATEGORY_SPECIALIST
+
+    return ScriptedLLM([reply_turn(CATEGORY_SPECIALIST[scenario.category.value].value)])
