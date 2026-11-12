@@ -139,6 +139,18 @@ What the comparison does not show:
 - Architecture and prompt changed together. No ablation separates the effect of the proposal step, the critic, the specialists, or the responder yet.
 - Three runs per architecture bound the variance only roughly.
 
+## Memory across tickets
+
+`data/eval/memory/memory.yaml` holds four scenarios that seed customer memory before the ticket (`--set memory`). In MEM-001 and MEM-002 the ticket reads like a first request, but memory holds two earlier refusals of the same refund, so a handover is expected. MEM-003 and MEM-004 are controls: one earlier refund, or an old unrelated handover, must not stop an eligible refund. Three runs each; the single agent has no memory.
+
+| | Single agent | Multi-agent, plain memory notes | Multi-agent, with memory guidance |
+| --- | --- | --- | --- |
+| Task success | 91.7% | 100.0% | 100.0% |
+| Handover decision correct | 50.0% | 50.0% | 100.0% |
+| Mean cost per ticket | $0.0020 | $0.0027 | $0.0030 |
+
+Showing the specialist the notes was not enough: it read them and still refused a third time. Adding two sentences that say how to use them (repeated refusals count as insistence under POL-ESC-001, a past refund or handover alone is no reason for caution) lifted handover accuracy to 12 of 12, with no over-escalation on the controls. Treat this as a small demonstration, not a measurement: there are four scenarios, and the guidance was written after seeing the first result on these same scenarios. The first result is kept in git history (`reports/agent_multi_memory.json` at commit `cb0cb83`).
+
 ## Limits of the numbers
 
 - The Phase 3 baseline is one run per scenario. The architecture comparison uses three runs and reports `pass^3`; the full reliability metric (`k = 4`) and a held-out set come with Phase 5.
