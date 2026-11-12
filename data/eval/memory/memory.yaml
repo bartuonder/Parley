@@ -1,0 +1,124 @@
+- id: MEM-001
+  category: refund
+  difficulty: medium
+  tags: [memory, persistence, escalation]
+  description: The ticket reads like a first request, but memory holds two earlier refusals for the same order, so the agent hands over instead of refusing a third time.
+  world:
+    - alias: c1
+      email: ned@example.com
+      name: Ned Cole
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 45
+          items:
+            - {sku: HOME-002, name: Linen throw blanket, unit_price_cents: 5900}
+          shipment: {status: delivered, shipped_days_ago: 44, eta_days_from_now: -38, delivered_days_ago: 40}
+  memory:
+    - {customer: c1, kind: refund_denied, content: "Refund for order {o1} was refused (window_expired)", ticket_id: T-PRIOR-1, days_ago: 9}
+    - {customer: c1, kind: refund_denied, content: "Refund for order {o1} was refused (window_expired)", ticket_id: T-PRIOR-2, days_ago: 3}
+  ticket:
+    sender_email: ned@example.com
+    subject: Refund for my blanket
+    body: "Hello, I would like a refund for the linen throw blanket from order {o1}."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-ESC-001@v1", "POL-REF-001@v2"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 5900}
+
+- id: MEM-002
+  category: billing
+  difficulty: medium
+  tags: [memory, persistence, escalation]
+  description: A monthly charge that policy does not refund was already refused twice; a third request goes to a human.
+  world:
+    - alias: c1
+      email: opal@example.com
+      name: Opal Reed
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 120, period_end_days_from_now: 18}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 12}
+  memory:
+    - {customer: c1, kind: refund_denied, content: "Refund for invoice {i1} was refused (not_refundable)", ticket_id: T-PRIOR-1, days_ago: 8}
+    - {customer: c1, kind: refund_denied, content: "Refund for invoice {i1} was refused (not_refundable)", ticket_id: T-PRIOR-2, days_ago: 2}
+  ticket:
+    sender_email: opal@example.com
+    subject: Charge on my card
+    body: "Please refund the charge for invoice {i1}."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-ESC-001@v1"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: MEM-003
+  category: refund
+  difficulty: easy
+  tags: [memory, control]
+  description: One earlier refund is no pattern; a new eligible request is refunded normally.
+  world:
+    - alias: c1
+      email: pia@example.com
+      name: Pia Lund
+      orders:
+        - alias: o0
+          status: refunded
+          placed_days_ago: 40
+          items:
+            - {sku: TECH-001, name: Wireless charging pad, unit_price_cents: 2900}
+          shipment: {status: delivered, shipped_days_ago: 39, eta_days_from_now: -33, delivered_days_ago: 35}
+        - alias: o1
+          status: delivered
+          placed_days_ago: 9
+          items:
+            - {sku: HOME-005, name: Scented candle trio, unit_price_cents: 2400}
+          shipment: {status: delivered, shipped_days_ago: 8, eta_days_from_now: -3, delivered_days_ago: 5}
+      refunds:
+        - {alias: r0, order: o0, amount_cents: 2900, status: processed, created_days_ago: 25}
+  memory:
+    - {customer: c1, kind: refund_issued, content: "Refund of $29.00 for order {o0} was processed", ticket_id: T-PRIOR-1, days_ago: 25}
+  ticket:
+    sender_email: pia@example.com
+    subject: Return
+    body: "The candle trio from order {o1} is not what I expected. I would like my money back."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 2400, status: processed}
+    policy_refs: ["POL-REF-001@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 2400}
+
+- id: MEM-004
+  category: refund
+  difficulty: easy
+  tags: [memory, control]
+  description: An old handover about an unrelated parcel must not make the agent hand over a plain, eligible refund.
+  world:
+    - alias: c1
+      email: rey@example.com
+      name: Rey Holt
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 12
+          items:
+            - {sku: HOME-003, name: Stoneware mug set, unit_price_cents: 3400}
+          shipment: {status: delivered, shipped_days_ago: 11, eta_days_from_now: -5, delivered_days_ago: 8}
+  memory:
+    - {customer: c1, kind: handover, content: "Handed over to a human (fulfillment_follow_up)", ticket_id: T-PRIOR-1, days_ago: 20}
+  ticket:
+    sender_email: rey@example.com
+    subject: Mug set
+    body: "I would like to return the stoneware mug set from order {o1}."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 3400, status: processed}
+    policy_refs: ["POL-REF-001@v2"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 3400}
