@@ -56,6 +56,9 @@ class ScenarioOutcome(BaseModel):
     specialist: str | None = None
     revisions: int = 0
     critic_source: str | None = None
+    turns: int = 1
+    transcript: list[str] = Field(default_factory=list)
+    simulator_cost_usd: float = 0.0
     awaiting_approval: bool = False
     error: str | None = None
 

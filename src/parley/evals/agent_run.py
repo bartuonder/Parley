@@ -11,7 +11,8 @@ from parley.agent.loop import run_ticket
 from parley.agent.result import AgentResult
 from parley.agent.ticket import Ticket
 from parley.backend.services import Backend
-from parley.evals.schema import Scenario
+from parley.evals.dialogue import run_dialogue
+from parley.evals.schema import DialogueSpec, Scenario
 from parley.evals.scoring import ScenarioOutcome, score
 from parley.evals.state import take_snapshot
 from parley.evals.world import WorldIndex, build_world, render_text
@@ -52,6 +53,7 @@ async def run_scenario(
     max_cost_usd: float,
     now: datetime = REFERENCE_NOW,
     arch: Architecture = SINGLE,
+    simulator: LLMClient | None = None,
 ) -> ScenarioOutcome:
     """Build the scenario world, let the agent handle its ticket, and score the final state."""
     index = build_world(session, scenario, now)
@@ -64,33 +66,57 @@ async def run_scenario(
         body=render_text(scenario.ticket.body, index),
     )
     customer = backend.find_customer_by_email(ticket.sender_email)
-    ctx = ToolContext(backend, customer.id, ticket.id, retriever=retriever(session))
     llm = llm_factory(scenario, index)
-    result: AgentResult
-    if arch.name == "multi":
-        if arch.router_llm_factory is None:
-            raise ValueError("the multi architecture needs a router model")
-        result = await run_multi(
-            arch.router_llm_factory(scenario, index),
-            llm,
-            ctx,
-            ticket,
-            model=model,
-            max_steps=max_steps,
-            max_cost_usd=max_cost_usd,
-            max_revisions=arch.max_revisions,
-        )
-    else:
-        result = await run_ticket(
+    if arch.name == "multi" and arch.router_llm_factory is None:
+        raise ValueError("the multi architecture needs a router model")
+
+    async def handle(turn_ticket: Ticket) -> AgentResult:
+        ctx = ToolContext(backend, customer.id, turn_ticket.id, retriever=retriever(session))
+        if arch.router_llm_factory is not None and arch.name == "multi":
+            return await run_multi(
+                arch.router_llm_factory(scenario, index),
+                llm,
+                ctx,
+                turn_ticket,
+                model=model,
+                max_steps=max_steps,
+                max_cost_usd=max_cost_usd,
+                max_revisions=arch.max_revisions,
+            )
+        return await run_ticket(
             llm,
             default_registry(),
             ctx,
-            ticket,
+            turn_ticket,
             model=model,
             max_steps=max_steps,
             max_cost_usd=max_cost_usd,
         )
-    return score(scenario, index, before, take_snapshot(session, index), result)
+
+    if scenario.dialogue is None:
+        result = await handle(ticket)
+        return score(scenario, index, before, take_snapshot(session, index), result)
+    if simulator is None:
+        raise ValueError(f"{scenario.id} is a dialogue and needs a user simulator")
+    run = await run_dialogue(_render_dialogue(scenario.dialogue, index), ticket, simulator, handle)
+    outcome = score(scenario, index, before, take_snapshot(session, index), run.result)
+    return outcome.model_copy(
+        update={
+            "turns": int(run.result.extras["turns"]),
+            "transcript": [f"[{t.role}] {t.text}" for t in run.turns],
+            "simulator_cost_usd": run.simulator_usage.cost_usd,
+        }
+    )
+
+
+def _render_dialogue(spec: DialogueSpec, index: WorldIndex) -> DialogueSpec:
+    return spec.model_copy(
+        update={
+            "persona": render_text(spec.persona, index),
+            "goal": render_text(spec.goal, index),
+            "facts": [render_text(f, index) for f in spec.facts],
+        }
+    )
 
 
 async def evaluate(
@@ -106,6 +132,7 @@ async def evaluate(
     on_outcome: Callable[[ScenarioOutcome], None] | None = None,
     arch: Architecture = SINGLE,
     already_spent_usd: float = 0.0,
+    simulator: LLMClient | None = None,
 ) -> list[ScenarioOutcome]:
     """Run scenarios one by one, each in a transaction that is rolled back afterwards."""
     outcomes: list[ScenarioOutcome] = []
@@ -119,9 +146,17 @@ async def evaluate(
             logger.warning("total budget of %.2f USD reached, stopping early", total_budget_usd)
             break
         outcome = await _run_isolated(
-            engine, scenario, llm_factory, retriever, model, max_steps, max_cost_usd, arch
+            engine,
+            scenario,
+            llm_factory,
+            retriever,
+            model,
+            max_steps,
+            max_cost_usd,
+            arch,
+            simulator,
         )
-        spent += outcome.cost_usd
+        spent += outcome.cost_usd + outcome.simulator_cost_usd
         consecutive_errors = consecutive_errors + 1 if outcome.error else 0
         outcomes.append(outcome)
         if on_outcome is not None:
@@ -138,6 +173,7 @@ async def _run_isolated(
     max_steps: int,
     max_cost_usd: float,
     arch: Architecture,
+    simulator: LLMClient | None,
 ) -> ScenarioOutcome:
     connection = engine.connect()
     transaction = connection.begin()
@@ -152,6 +188,7 @@ async def _run_isolated(
             max_steps=max_steps,
             max_cost_usd=max_cost_usd,
             arch=arch,
+            simulator=simulator,
         )
     except Exception as exc:
         logger.exception("scenario %s failed", scenario.id)
