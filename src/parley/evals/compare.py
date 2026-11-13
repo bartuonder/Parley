@@ -41,6 +41,21 @@ def render_comparison(single: dict[str, Any], multi: dict[str, Any]) -> str:
             _pct(b["unbacked_claim_rate"]),
         ),
         ("Handover decision correct", _pct(a["handover_accuracy"]), _pct(b["handover_accuracy"])),
+        (
+            "Policy violation (forbidden action or stale citation)",
+            _pct(a.get("policy_violation_rate")),
+            _pct(b.get("policy_violation_rate")),
+        ),
+        (
+            "Refunds and cancellations that were right (precision)",
+            _pct(a.get("tool_precision")),
+            _pct(b.get("tool_precision")),
+        ),
+        (
+            "Expected refunds and cancellations that were done (recall)",
+            _pct(a.get("tool_recall")),
+            _pct(b.get("tool_recall")),
+        ),
         ("Tool calls with an error", _pct(a["tool_error_rate"]), _pct(b["tool_error_rate"])),
         ("Router picked the expected specialist", "n/a", _pct(b["router_accuracy"])),
         (
