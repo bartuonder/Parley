@@ -148,7 +148,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
         engine.dispose()
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the agent on the eval scenarios.")
     parser.add_argument("--arch", choices=["single", "multi"], default="single")
     parser.add_argument("--set", dest="scenario_set", choices=sorted(SCENARIO_SETS), default="core")
@@ -163,10 +163,14 @@ def main() -> None:
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
     parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.ablate and args.arch != "multi":
         parser.error("--ablate applies to the multi-agent graph only")
+    return args
 
+
+def execute(args: argparse.Namespace) -> dict[str, Any]:
+    """Run one configuration, write its report files, and return the report."""
     scenarios = select_scenarios(load_set(args.scenario_set), args.ids, args.category, args.limit)
     if not scenarios:
         raise SystemExit(f"no scenarios selected from the {args.scenario_set} set")
@@ -196,10 +200,16 @@ def main() -> None:
         "total_budget_usd": args.budget,
     }
     out = args.out or default_out(args.arch, args.scenario_set, args.ablate)
+    report = build_report(flat, model, limits, runs)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(build_report(flat, model, limits, runs), indent=2) + "\n", "utf-8")
+    out.write_text(json.dumps(report, indent=2) + "\n", "utf-8")
     text = render_markdown(flat, model) + (render_repeats(repeats) if repeats else "")
     out.with_suffix(".md").write_text(text, encoding="utf-8")
+    return report
+
+
+def main() -> None:
+    execute(parse_args())
 
 
 if __name__ == "__main__":
