@@ -18,6 +18,7 @@ class Summary(BaseModel):
     unbacked_claim_rate: float
     router_accuracy: float | None
     mean_revisions: float
+    critic_unparsed_rate: float = 0.0
     error_rate: float
     mean_policy_recall: float | None
     tool_error_rate: float
@@ -65,6 +66,7 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
             else None
         ),
         mean_revisions=_mean([float(o.revisions) for o in outcomes]),
+        critic_unparsed_rate=_rate(outcomes, lambda o: o.critic_source == "unparsed"),
         error_rate=_rate(outcomes, lambda o: o.error is not None),
         mean_policy_recall=_mean(recalls) if recalls else None,
         tool_error_rate=sum(o.tool_errors for o in outcomes) / calls if calls else 0.0,
@@ -100,7 +102,11 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
         f"| Handover decision correct | {total.handover_accuracy:.1%} |",
         f"| Tool calls that returned an error | {total.tool_error_rate:.1%} |",
         *(
-            [f"| Router picked the expected specialist | {total.router_accuracy:.1%} |"]
+            [
+                f"| Router picked the expected specialist | {total.router_accuracy:.1%} |",
+                f"| Critic answer unreadable, plan approved unreviewed | "
+                f"{total.critic_unparsed_rate:.1%} |",
+            ]
             if total.router_accuracy is not None
             else []
         ),

@@ -42,6 +42,7 @@ class ScenarioOutcome(BaseModel):
     unbacked_claims: list[str] = Field(default_factory=list)
     specialist: str | None = None
     revisions: int = 0
+    critic_source: str | None = None
     awaiting_approval: bool = False
     error: str | None = None
 
@@ -123,6 +124,7 @@ def score(
         unbacked_claims=sorted(c.value for c in unbacked),
         specialist=result.extras.get("specialist"),
         revisions=int(result.extras.get("revisions", 0)),
+        critic_source=result.extras.get("critic_source"),
         awaiting_approval=bool(result.extras.get("awaiting_approval", False)),
         trace=[
             TraceEntry(

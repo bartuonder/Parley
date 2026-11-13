@@ -128,6 +128,7 @@ def to_result(
             "critic_issues": state.get("issues", []),
             "awaiting_approval": "__interrupt__" in state,
             "followup": state.get("followup", ""),
+            "critic_source": state.get("verdict", {}).get("source"),
             "unbacked_after_rewrite": state.get("unbacked", []),
         },
     )
