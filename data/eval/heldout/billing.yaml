@@ -1,0 +1,165 @@
+- id: HLD-012
+  category: billing
+  difficulty: medium
+  tags: [duplicate, refund]
+  description: Two identical paid charges five hours apart; the customer names the amount, not the invoice.
+  world:
+    - alias: c1
+      email: lena@example.com
+      name: Lena Fox
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: active, price_cents: 4900, started_days_ago: 150, period_end_days_from_now: 20}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 10.3}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 10.1}
+  ticket:
+    sender_email: lena@example.com
+    subject: Charged twice for Team
+    body: "My card shows two charges of 49.00 for the Team plan on the same day. Please fix it."
+  expected:
+    diff:
+      invoices: {i2: refunded}
+      new_refunds:
+        - {target: i2, amount_cents: 4900, status: processed}
+    policy_refs: ["POL-BIL-001@v2"]
+    reply_facts: ["the later charge is refunded"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 4900}
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 4900}
+
+- id: HLD-013
+  category: billing
+  difficulty: hard
+  tags: [duplicate, not_duplicate, denial]
+  description: Two equal charges 30 hours apart are outside the 24-hour duplicate rule.
+  world:
+    - alias: c1
+      email: marek@example.com
+      name: Marek Nowak
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 60, period_end_days_from_now: 15}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 12.4}
+        - {alias: i2, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 11.15}
+  ticket:
+    sender_email: marek@example.com
+    subject: Double billing on Pro
+    body: "I was billed 19.00 twice, invoices {i1} and {i2}. Refund the second one."
+  expected:
+    policy_refs: ["POL-BIL-001@v2"]
+    reply_facts: ["charges more than 24 hours apart are not duplicates"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i2, amount_cents: 1900}
+
+- id: HLD-014
+  category: billing
+  difficulty: easy
+  tags: [failed_payment, denial]
+  description: A failed charge still shows as pending on the customer's bank statement.
+  world:
+    - alias: c1
+      email: gail@example.com
+      name: Gail Weber
+      subscriptions:
+        - {alias: s1, plan: basic, interval: monthly, status: past_due, price_cents: 900, started_days_ago: 95, period_end_days_from_now: -1}
+      invoices:
+        - {alias: i1, subscription: s1, status: failed, amount_cents: 900, issued_days_ago: 1}
+  ticket:
+    sender_email: gail@example.com
+    subject: Pending charge on my card
+    body: "There is a pending 9.00 charge from you on my card. Invoice {i1} says failed. Please refund it."
+  expected:
+    policy_refs: ["POL-BIL-002@v1"]
+    reply_facts: ["a failed invoice was never collected", "update the payment method"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 900}
+
+- id: HLD-015
+  category: billing
+  difficulty: medium
+  tags: [dispute, escalation]
+  description: Customer disputed a charge with the bank and now wants to withdraw the dispute.
+  world:
+    - alias: c1
+      email: hugo@example.com
+      name: Hugo Brandt
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 200, period_end_days_from_now: 9}
+      invoices:
+        - {alias: i1, subscription: s1, status: disputed, amount_cents: 1900, issued_days_ago: 21}
+  ticket:
+    sender_email: hugo@example.com
+    subject: I want to withdraw my chargeback
+    body: "I opened a dispute with my bank for invoice {i1} but it was my mistake. How do I withdraw it?"
+  expected:
+    requires_human: true
+    policy_refs: ["POL-BIL-003@v1", "POL-ESC-001@v1"]
+    reply_facts: ["the disputes team will help withdraw it"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: HLD-016
+  category: billing
+  difficulty: easy
+  tags: [invoice_details, escalation]
+  description: Customer wants the company name and address changed on a past invoice.
+  world:
+    - alias: c1
+      email: sven@example.com
+      name: Sven Aaltonen
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: active, price_cents: 4900, started_days_ago: 90, period_end_days_from_now: 12}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 18}
+  ticket:
+    sender_email: sven@example.com
+    subject: Invoice needs our company name
+    body: "Invoice {i1} was issued to me personally. Please reissue it to Aaltonen Design Oy with our business address."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-ESC-001@v1"]
+    reply_facts: ["passed to a human colleague"]
+
+- id: HLD-017
+  category: billing
+  difficulty: medium
+  tags: [already_refunded, timing]
+  description: Invoice was refunded yesterday; the customer has not seen the money yet.
+  world:
+    - alias: c1
+      email: tess@example.com
+      name: Tess Moran
+      subscriptions:
+        - {alias: s1, plan: pro, interval: annual, status: active, price_cents: 19000, started_days_ago: 40, period_end_days_from_now: 325}
+      invoices:
+        - {alias: i1, subscription: s1, status: refunded, amount_cents: 19000, issued_days_ago: 9}
+      refunds:
+        - {alias: r1, invoice: i1, amount_cents: 19000, status: processed, created_days_ago: 1}
+  ticket:
+    sender_email: tess@example.com
+    subject: Where is my refund?
+    body: "You said invoice {i1} was refunded but nothing has arrived on my card yet."
+  expected:
+    policy_refs: ["POL-REF-009@v1"]
+    reply_facts: ["refunds appear within 5 to 10 business days"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 19000}
+
+- id: HLD-018
+  category: general
+  difficulty: easy
+  tags: [info, premium]
+  description: Customer asks how long premium members have to return items; no action needed.
+  world:
+    - alias: c1
+      email: quinn@example.com
+      name: Quinn Archer
+      tier: premium
+  ticket:
+    sender_email: quinn@example.com
+    subject: Premium return period
+    body: "How many days do I have to return something as a premium member?"
+  expected:
+    policy_refs: ["POL-REF-002@v1", "POL-GEN-004@v1"]
+    reply_facts: ["premium members have 45 days from delivery"]
