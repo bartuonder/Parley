@@ -18,6 +18,8 @@ class Summary(BaseModel):
     unbacked_claim_rate: float
     router_accuracy: float | None
     mean_revisions: float
+    tool_precision: float | None = None
+    tool_recall: float | None = None
     critic_unparsed_rate: float = 0.0
     error_rate: float
     mean_policy_recall: float | None
@@ -43,6 +45,10 @@ def _rate(outcomes: list[ScenarioOutcome], test: Callable[[ScenarioOutcome], boo
     return sum(1 for o in outcomes if test(o)) / len(outcomes) if outcomes else 0.0
 
 
+def _ratio(part: int, whole: int) -> float | None:
+    return part / whole if whole else None
+
+
 def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
@@ -51,6 +57,8 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
     recalls = [o.policy_recall for o in outcomes if o.policy_recall is not None]
     routed = [o for o in outcomes if o.specialist is not None]
     calls = sum(len(o.tool_calls) for o in outcomes)
+    executed = sum(o.writes_executed for o in outcomes)
+    expected = sum(o.writes_expected for o in outcomes)
     latencies = [o.latency_s for o in outcomes]
     return Summary(
         n=len(outcomes),
@@ -66,6 +74,8 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
             else None
         ),
         mean_revisions=_mean([float(o.revisions) for o in outcomes]),
+        tool_precision=_ratio(sum(o.writes_correct for o in outcomes), executed),
+        tool_recall=_ratio(sum(o.writes_found for o in outcomes), expected),
         critic_unparsed_rate=_rate(outcomes, lambda o: o.critic_source == "unparsed"),
         error_rate=_rate(outcomes, lambda o: o.error is not None),
         mean_policy_recall=_mean(recalls) if recalls else None,
@@ -101,6 +111,9 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
         f"| Reply claims an action that did not happen | {total.unbacked_claim_rate:.1%} |",
         f"| Handover decision correct | {total.handover_accuracy:.1%} |",
         f"| Tool calls that returned an error | {total.tool_error_rate:.1%} |",
+        f"| Refunds and cancellations that were right (precision) | {_pct(total.tool_precision)} |",
+        f"| Expected refunds and cancellations that were done (recall) | "
+        f"{_pct(total.tool_recall)} |",
         *(
             [
                 f"| Router picked the expected specialist | {total.router_accuracy:.1%} |",
@@ -130,6 +143,10 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
     failed = [o.scenario_id for o in outcomes if not o.success]
     lines += ["", "Failed: " + (", ".join(failed) if failed else "none")]
     return "\n".join(lines) + "\n"
+
+
+def _pct(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1%}"
 
 
 class RepeatSummary(BaseModel):

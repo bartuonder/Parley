@@ -9,6 +9,8 @@ from parley.evals.state import Snapshot, diff_snapshots, normalize
 from parley.evals.world import WorldIndex
 from parley.orchestration.claims import unbacked_claims
 
+WRITE_TOOLS = frozenset({"issue_refund", "cancel_subscription"})
+
 
 class TraceEntry(BaseModel):
     name: str
@@ -33,6 +35,10 @@ class ScenarioOutcome(BaseModel):
     steps: int
     tool_calls: list[str]
     tool_errors: int
+    writes_executed: int = 0
+    writes_correct: int = 0
+    writes_expected: int = 0
+    writes_found: int = 0
     cost_usd: float
     latency_s: float
     prompt_tokens: int
@@ -94,6 +100,7 @@ def score(
     actual = diff_snapshots(before, after)
     pending = any(r.status == RefundStatus.PENDING_APPROVAL for r in actual.new_refunds)
     done = {c.name for c in result.tool_calls if c.ok}
+    executed = [c for c in result.tool_calls if c.ok and c.name in WRITE_TOOLS]
     handed_over = bool(result.escalations) or pending
     unbacked = unbacked_claims(
         result.reply,
@@ -117,6 +124,12 @@ def score(
         steps=result.steps,
         tool_calls=[c.name for c in result.tool_calls],
         tool_errors=sum(1 for c in result.tool_calls if not c.ok),
+        writes_executed=len(executed),
+        writes_correct=sum(1 for c in executed if _is_reference(c, scenario, index)),
+        writes_expected=len(scenario.reference_actions),
+        writes_found=sum(
+            1 for a in scenario.reference_actions if any(_matches(a, index, c) for c in executed)
+        ),
         cost_usd=result.usage.cost_usd,
         latency_s=result.latency_s,
         prompt_tokens=result.usage.prompt_tokens,
@@ -164,6 +177,10 @@ def _matches(action: ActionSpec, index: WorldIndex, call: ToolInvocation) -> boo
         and args.get("target_id") == ids[action.alias]
         and args.get("amount_cents") == action.amount_cents
     )
+
+
+def _is_reference(call: ToolInvocation, scenario: Scenario, index: WorldIndex) -> bool:
+    return any(_matches(a, index, call) for a in scenario.reference_actions)
 
 
 def _policy_recall(expected: list[str], cited: list[str]) -> float | None:
