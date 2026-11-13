@@ -35,7 +35,12 @@ def test_agreement_is_counted_per_criterion_with_the_direction_of_errors() -> No
         sample("c", no_false_claims=False),
         sample("d"),
     ]
-    verdicts = [verdict(), verdict(), verdict(no_false_claims=False), verdict(no_leak=False)]
+    verdicts: list[JudgeVerdict | None] = [
+        verdict(),
+        verdict(),
+        verdict(no_false_claims=False),
+        verdict(no_leak=False),
+    ]
     by_name = {a.criterion: a for a in measure(samples, verdicts)}
     leak = by_name["no_leak"]
     assert (leak.n, leak.agree, leak.false_pass, leak.false_fail) == (4, 2, 1, 1)
