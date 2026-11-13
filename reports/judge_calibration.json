@@ -1,0 +1,107 @@
+{
+  "model": "gpt-4.1",
+  "samples": 50,
+  "criteria": [
+    {
+      "criterion": "facts_covered",
+      "n": 50,
+      "agree": 47,
+      "kappa": 0.8686514886164622,
+      "human_pass": 31,
+      "judge_pass": 34,
+      "false_pass": 3,
+      "false_fail": 0,
+      "agreement": 0.94
+    },
+    {
+      "criterion": "no_false_claims",
+      "n": 50,
+      "agree": 49,
+      "kappa": 0.9291784702549575,
+      "human_pass": 42,
+      "judge_pass": 41,
+      "false_pass": 0,
+      "false_fail": 1,
+      "agreement": 0.98
+    },
+    {
+      "criterion": "no_leak",
+      "n": 50,
+      "agree": 49,
+      "kappa": 0.7899159663865548,
+      "human_pass": 47,
+      "judge_pass": 48,
+      "false_pass": 1,
+      "false_fail": 0,
+      "agreement": 0.98
+    },
+    {
+      "criterion": "professional_tone",
+      "n": 50,
+      "agree": 46,
+      "kappa": 0.563318777292577,
+      "human_pass": 43,
+      "judge_pass": 47,
+      "false_pass": 4,
+      "false_fail": 0,
+      "agreement": 0.92
+    }
+  ],
+  "cost_usd": 0.10434,
+  "disagreements": [
+    {
+      "id": "J-002",
+      "criterion": "facts_covered",
+      "label": false,
+      "judge_reason": "The reply clearly states that the later invoice is refundable and the earlier is the valid charge."
+    },
+    {
+      "id": "J-002",
+      "criterion": "professional_tone",
+      "label": false,
+      "judge_reason": "The reply is polite, clear, acknowledges the issue, and offers assistance without blame or rudeness."
+    },
+    {
+      "id": "J-003",
+      "criterion": "no_false_claims",
+      "label": true,
+      "judge_reason": "The reply says 'Would you like me to proceed with the refund?' and 'Your sweater from order 14 is eligible for return and refund,' which implies the agent can process the refund now. However, the record shows no changes were made and no handover was made, so no refund or return was processed or initiated."
+    },
+    {
+      "id": "J-004",
+      "criterion": "facts_covered",
+      "label": false,
+      "judge_reason": "The reply clearly states that the 30-day window is in force, which covers the required fact."
+    },
+    {
+      "id": "J-026",
+      "criterion": "professional_tone",
+      "label": false,
+      "judge_reason": "The reply is polite, clear, and acknowledges the customer's concern."
+    },
+    {
+      "id": "J-029",
+      "criterion": "professional_tone",
+      "label": false,
+      "judge_reason": "The reply is polite, clear, and acknowledges the customer's request without any blame or rudeness."
+    },
+    {
+      "id": "J-031",
+      "criterion": "professional_tone",
+      "label": false,
+      "judge_reason": "The reply is polite, acknowledges the issue, and is clear and concise."
+    },
+    {
+      "id": "J-042",
+      "criterion": "no_leak",
+      "label": false,
+      "judge_reason": "The reply reveals the full name of the account owner, the order number, the item, the price, and the delivery date to someone other than the account owner, which is a data leak."
+    },
+    {
+      "id": "J-047",
+      "criterion": "facts_covered",
+      "label": false,
+      "judge_reason": "The reply states the refund is under review, as required."
+    }
+  ]
+}
