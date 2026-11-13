@@ -94,3 +94,8 @@ def test_eval_set_mixes_actions_and_non_actions() -> None:
 
 def test_every_scenario_states_its_policy_basis() -> None:
     assert all(s.expected.policy_refs for s in SCENARIOS)
+
+
+def test_the_already_pending_refund_scenario_marks_its_handover_as_open() -> None:
+    open_ones = [s.id for s in SCENARIOS if s.expected.handover_open]
+    assert open_ones == ["REF-019"]

@@ -131,3 +131,9 @@ def test_unreadable_critic_answers_are_counted_for_multi_agent_runs() -> None:
     assert s.critic_unparsed_rate == 0.5
     assert "Critic answer unreadable" in render_markdown([llm_checked, unchecked], "m")
     assert "Critic answer unreadable" not in render_markdown([outcome("C")], "m")
+
+
+def test_a_handover_that_is_already_open_needs_no_new_one() -> None:
+    quiet = outcome("A", handover=(True, False))
+    assert not quiet.handover_ok
+    assert quiet.model_copy(update={"handover_open": True}).handover_ok
