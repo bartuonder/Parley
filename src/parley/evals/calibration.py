@@ -145,6 +145,18 @@ def main() -> None:
         "samples": len(samples),
         "criteria": [{**a.__dict__, "agreement": a.rate} for a in agreements],
         "cost_usd": sum(v.usage.cost_usd for v in verdicts if v is not None),
+        "disagreements": [
+            {
+                "id": s.id,
+                "criterion": name,
+                "label": s.labels[name],
+                "judge_reason": v.reasons[name],
+            }
+            for s, v in zip(samples, verdicts, strict=True)
+            if v is not None
+            for name in CRITERIA
+            if v.passes[name] != s.labels[name]
+        ],
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
