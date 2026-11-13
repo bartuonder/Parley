@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from parley.agent.result import ToolInvocation
-from parley.memory.facts import facts_from_run
+from parley.memory.facts import decision_facts, facts_from_run
 from parley.memory.store import MemoryFact, recall, remember, render_memory
 from parley.orchestration.executor import ExecutedAction
 from tests.factories import NOW, make_customer
@@ -88,3 +88,15 @@ def test_reseeding_clears_memory(session: Session) -> None:
     reset_database(session)
     count = session.execute(text("SELECT count(*) FROM customer_memory")).scalar_one()
     assert count == 0
+
+
+def test_human_decisions_become_facts() -> None:
+    waiting = refund(approval=True)
+    waiting.output["id"] = 12
+    approved = decision_facts([waiting], {"12": True})
+    declined = decision_facts([waiting], {"12": False})
+    assert approved == [
+        ("refund_approved", "Refund of $49.00 for order 7 was approved by a human and processed")
+    ]
+    assert declined[0][0] == "refund_declined"
+    assert decision_facts([waiting], {}) == declined

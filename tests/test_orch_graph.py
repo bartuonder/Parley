@@ -254,3 +254,25 @@ def test_outcomes_are_remembered_and_shown_to_the_specialist_next_time(
     run(deps(ctx, ScriptedLLM([reply_turn("billing")]), second), followup)
     system_prompt = second.requests[0][0]["content"]
     assert "earlier tickets" in system_prompt and "Refund of $50.00" in system_prompt
+
+
+def test_the_human_decision_is_remembered(session: Session, ctx: ToolContext) -> None:
+    amount = APPROVAL_THRESHOLD_CENTS + 5000
+    order = delivered_order(session, ctx, amount)
+    llm = ScriptedLLM(
+        [
+            propose_refund(order, amount),
+            reply_turn("Draft."),
+            reply_turn(APPROVE),
+            reply_turn("Under review."),
+        ]
+    )
+    saver = InMemorySaver()
+    d = deps(ctx, ScriptedLLM([reply_turn("billing")]), llm)
+    paused = run(d, ticket(), saver)
+    assert [f.kind for f in recall(session, ctx.customer_id)] == ["refund_pending"]
+
+    refund_id = paused["__interrupt__"][0].value["refunds"][0]["refund_id"]
+    run(d, ticket(), saver, resume={str(refund_id): False})
+    kinds = [f.kind for f in recall(session, ctx.customer_id)]
+    assert kinds == ["refund_declined", "refund_pending"]
