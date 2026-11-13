@@ -23,6 +23,14 @@ CATEGORY_SPECIALIST: dict[str, Specialist] = {
     "general": Specialist.BILLING,
 }
 
+ACCEPTED_SPECIALISTS: dict[str, frozenset[Specialist]] = {
+    "refund": frozenset({Specialist.BILLING, Specialist.SHIPPING}),
+    "billing": frozenset({Specialist.BILLING}),
+    "shipping": frozenset({Specialist.SHIPPING, Specialist.BILLING}),
+    "subscription": frozenset({Specialist.SUBSCRIPTION, Specialist.BILLING}),
+    "general": frozenset(Specialist),
+}
+
 ROUTER_PROMPT = """\
 You route customer support tickets to one specialist. Answer with exactly one word.
 

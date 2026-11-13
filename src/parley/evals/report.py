@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pydantic import BaseModel
 
 from parley.evals.scoring import ScenarioOutcome
-from parley.orchestration.router import CATEGORY_SPECIALIST
+from parley.orchestration.router import ACCEPTED_SPECIALISTS
 
 
 class Summary(BaseModel):
@@ -78,7 +78,10 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
         forbidden_attempt_rate=_rate(outcomes, lambda o: bool(o.forbidden_attempts)),
         unbacked_claim_rate=_rate(outcomes, lambda o: bool(o.unbacked_claims)),
         router_accuracy=(
-            _rate(routed, lambda o: o.specialist == CATEGORY_SPECIALIST[o.category].value)
+            _rate(
+                routed,
+                lambda o: o.specialist in {s.value for s in ACCEPTED_SPECIALISTS[o.category]},
+            )
             if routed
             else None
         ),
