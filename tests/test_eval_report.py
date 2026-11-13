@@ -150,3 +150,11 @@ def test_tool_precision_and_recall_pool_all_scenarios() -> None:
     assert s.tool_precision == 1 / 3 and s.tool_recall == 0.5
     assert summarize([outcome("D")]).tool_precision is None
     assert "(precision)" in render_markdown([right], "m")
+
+
+def test_policy_violations_are_forbidden_attempts_or_stale_citations() -> None:
+    clean = outcome("A")
+    forbidden = outcome("B", attempts=["issue_refund order o1"])
+    stale = outcome("C").model_copy(update={"stale_citations": ["POL-REF-001@v1"]})
+    assert clean.policy_compliant and not forbidden.policy_compliant and not stale.policy_compliant
+    assert summarize([clean, forbidden, stale, clean]).policy_violation_rate == 0.5

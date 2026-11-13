@@ -1,6 +1,6 @@
 from parley.agent.result import ToolInvocation
 from parley.evals.schema import ActionSpec
-from parley.evals.scoring import TraceEntry, _policy_recall, forbidden_attempts
+from parley.evals.scoring import TraceEntry, _policy_recall, forbidden_attempts, stale_citations
 from parley.evals.world import WorldIndex
 
 INDEX = WorldIndex(orders={"o1": 11}, invoices={"i1": 21}, subscriptions={"s1": 31})
@@ -54,3 +54,10 @@ def test_outcome_trace_keeps_arguments_and_error_codes() -> None:
         "ok": False,
         "error_code": "not_found",
     }
+
+
+def test_only_versions_that_are_not_in_force_count_as_stale() -> None:
+    assert stale_citations("Per POL-REF-001@v1 you may return it.") == ["POL-REF-001@v1"]
+    assert stale_citations("No citations here.") == []
+    assert stale_citations("Per POL-REF-001@v2 and POL-REF-001@v2.") == []
+    assert stale_citations("Per POL-REF-001@v3, not effective yet.") == ["POL-REF-001@v3"]
