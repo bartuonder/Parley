@@ -13,6 +13,7 @@ from parley.orchestration.critic import (
     rule_issues,
 )
 from parley.tools.context import Proposal
+from parley.tools.proposals import CANCEL
 from tests.fakes import ScriptedLLM, reply_turn
 
 
@@ -115,3 +116,16 @@ def test_evidence_is_compact_and_truncated() -> None:
 def test_verdict_feedback_lists_each_issue() -> None:
     feedback = Verdict(approved=False, issues=["A", "B"]).feedback()
     assert "- A" in feedback and "- B" in feedback
+
+
+def test_cancelling_several_plans_needs_a_plural_request() -> None:
+    two = [
+        Proposal(CANCEL, {"subscription_id": 1}),
+        Proposal(CANCEL, {"subscription_id": 2}),
+    ]
+    vague = Ticket(id="T", sender_email="a@x.io", subject="Cancel", body="Please cancel my plan.")
+    plural = Ticket(id="T", sender_email="a@x.io", subject="Cancel", body="Cancel both plans.")
+    assert any("which plan" in i for i in rule_issues(vague, two))
+    assert rule_issues(plural, two) == []
+    assert rule_issues(vague, two[:1]) == []
+    assert rule_issues(vague, [two[0], Proposal(CANCEL, {"subscription_id": 1})]) == []
