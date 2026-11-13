@@ -115,6 +115,19 @@ async def judge_reply(
     return None
 
 
+def graded_text(outcome: ScenarioOutcome) -> tuple[str, str]:
+    """Ticket and reply to grade; a dialogue is graded on all customer and support messages."""
+    if not outcome.transcript:
+        return outcome.ticket_text, outcome.reply
+    customer = [
+        t.removeprefix("[customer] ") for t in outcome.transcript if t.startswith("[customer]")
+    ]
+    support = [
+        t.removeprefix("[support] ") for t in outcome.transcript if t.startswith("[support]")
+    ]
+    return "\n\n".join(customer), "\n\n".join(support)
+
+
 async def judge_outcomes(
     llm: LLMClient, outcomes: list[ScenarioOutcome], scenarios: list[Scenario], parallel: int = 8
 ) -> list[ScenarioOutcome]:
@@ -125,13 +138,10 @@ async def judge_outcomes(
     async def grade(outcome: ScenarioOutcome) -> ScenarioOutcome:
         if not outcome.reply:
             return outcome
+        ticket, reply = graded_text(outcome)
         async with gate:
             verdict = await judge_reply(
-                llm,
-                outcome.ticket_text,
-                describe_happened(outcome),
-                facts.get(outcome.scenario_id, []),
-                outcome.reply,
+                llm, ticket, describe_happened(outcome), facts.get(outcome.scenario_id, []), reply
             )
         if verdict is None:
             return outcome
