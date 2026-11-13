@@ -19,6 +19,7 @@ class Summary(BaseModel):
     router_accuracy: float | None
     mean_revisions: float
     policy_violation_rate: float | None = None
+    judge_pass_rates: dict[str, float] | None = None
     tool_precision: float | None = None
     tool_recall: float | None = None
     critic_unparsed_rate: float = 0.0
@@ -44,6 +45,13 @@ def percentile(values: list[float], q: float) -> float:
 
 def _rate(outcomes: list[ScenarioOutcome], test: Callable[[ScenarioOutcome], bool]) -> float:
     return sum(1 for o in outcomes if test(o)) / len(outcomes) if outcomes else 0.0
+
+
+def _judge_rates(outcomes: list[ScenarioOutcome]) -> dict[str, float] | None:
+    graded = [o.judge for o in outcomes if o.judge]
+    if not graded:
+        return None
+    return {name: sum(1 for g in graded if g[name]) / len(graded) for name in graded[0]}
 
 
 def _ratio(part: int, whole: int) -> float | None:
@@ -76,6 +84,7 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
         ),
         mean_revisions=_mean([float(o.revisions) for o in outcomes]),
         policy_violation_rate=_rate(outcomes, lambda o: not o.policy_compliant),
+        judge_pass_rates=_judge_rates(outcomes),
         tool_precision=_ratio(sum(o.writes_correct for o in outcomes), executed),
         tool_recall=_ratio(sum(o.writes_found for o in outcomes), expected),
         critic_unparsed_rate=_rate(outcomes, lambda o: o.critic_source == "unparsed"),
@@ -126,6 +135,10 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
             ]
             if total.router_accuracy is not None
             else []
+        ),
+        *(
+            f"| Judge: {name.replace('_', ' ')} | {rate:.1%} |"
+            for name, rate in (total.judge_pass_rates or {}).items()
         ),
         f"| Mean cost per ticket | ${total.mean_cost_usd:.4f} |",
         f"| Latency p50 / p95 | {total.latency_p50_s:.1f}s / {total.latency_p95_s:.1f}s |",

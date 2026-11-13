@@ -7,7 +7,7 @@ from parley.agent.result import CITATION, AgentResult, StopReason, ToolInvocatio
 from parley.db.enums import RefundStatus
 from parley.evals.schema import ActionSpec, Scenario, StateDiff
 from parley.evals.state import Snapshot, diff_snapshots, normalize
-from parley.evals.world import WorldIndex
+from parley.evals.world import WorldIndex, render_text
 from parley.orchestration.claims import unbacked_claims
 from parley.policies.loader import load_policies
 from parley.policies.models import Region
@@ -56,6 +56,10 @@ class ScenarioOutcome(BaseModel):
     specialist: str | None = None
     revisions: int = 0
     critic_source: str | None = None
+    ticket_text: str = ""
+    judge: dict[str, bool] | None = None
+    judge_reasons: dict[str, str] = Field(default_factory=dict)
+    judge_cost_usd: float = 0.0
     turns: int = 1
     transcript: list[str] = Field(default_factory=list)
     simulator_cost_usd: float = 0.0
@@ -150,6 +154,7 @@ def score(
         completion_tokens=result.usage.completion_tokens,
         reply=result.reply,
         actual_diff=actual,
+        ticket_text=render_ticket_text(scenario, index),
         unbacked_claims=sorted(c.value for c in unbacked),
         stale_citations=stale_citations(result.reply),
         specialist=result.extras.get("specialist"),
@@ -165,6 +170,12 @@ def score(
             )
             for c in result.tool_calls
         ],
+    )
+
+
+def render_ticket_text(scenario: Scenario, index: WorldIndex) -> str:
+    return (
+        f"{render_text(scenario.ticket.subject, index)}\n{render_text(scenario.ticket.body, index)}"
     )
 
 
