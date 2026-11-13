@@ -4,7 +4,13 @@ import json
 import pytest
 
 from parley.db.enums import RefundStatus
-from parley.evals.judge import CRITERIA, describe_happened, judge_outcomes, judge_reply
+from parley.evals.judge import (
+    CRITERIA,
+    describe_happened,
+    graded_text,
+    judge_outcomes,
+    judge_reply,
+)
 from parley.evals.loader import load_scenarios
 from parley.evals.report import render_markdown, summarize
 from parley.evals.schema import NewRefund, StateDiff
@@ -111,3 +117,20 @@ def test_a_verdict_that_says_fail_instead_of_pass_is_understood() -> None:
     )
     assert verdict is not None and verdict.passes["no_leak"] is False
     assert verdict.passes["facts_covered"] is True
+
+
+def test_a_dialogue_is_graded_on_every_customer_and_support_message() -> None:
+    chat = graded("DLG-1").model_copy(
+        update={
+            "transcript": [
+                "[customer] Please cancel.",
+                "[support] Which plan?",
+                "[customer] The Basic one.",
+                "[support] Done, it ends on June 15.",
+            ]
+        }
+    )
+    ticket, reply = graded_text(chat)
+    assert ticket == "Please cancel.\n\nThe Basic one."
+    assert reply == "Which plan?\n\nDone, it ends on June 15."
+    assert graded_text(graded("A")) == ("Subject\nBody", "Hello.")
