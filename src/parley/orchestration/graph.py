@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, TypedDict
 
 from langchain_core.runnables import RunnableConfig
@@ -43,6 +43,15 @@ class GraphState(TypedDict, total=False):
     stop_reason: str
 
 
+@dataclass(frozen=True)
+class Switches:
+    """Parts of the pipeline that an ablation can turn off."""
+
+    critic: bool = True
+    rewrite: bool = True
+    route: bool = True
+
+
 @dataclass
 class GraphDeps:
     router_llm: LLMClient
@@ -53,6 +62,7 @@ class GraphDeps:
     max_steps: int
     max_cost_usd: float
     max_revisions: int
+    switches: Switches = field(default_factory=Switches)
 
 
 def _deps(config: RunnableConfig) -> GraphDeps:
@@ -74,6 +84,8 @@ def _actions(state: GraphState) -> list[ExecutedAction]:
 
 async def triage(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     deps = _deps(config)
+    if not deps.switches.route:
+        return {"specialist": Specialist.BILLING.value, "route_raw": "fixed"}
     decision = await route_ticket(deps.router_llm, Ticket.model_validate(state["ticket"]))
     return {
         "specialist": decision.specialist.value,
@@ -119,6 +131,8 @@ def _handover(summary: str) -> dict[str, Any]:
 
 async def critic(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     deps = _deps(config)
+    if not deps.switches.critic:
+        return {"verdict": {"approved": True, "issues": [], "source": "skipped"}, "issues": []}
     calls = [ToolInvocation.model_validate(c) for c in state.get("trace", [])]
     verdict = await review(
         deps.llm,
@@ -169,6 +183,7 @@ async def respond_node(state: GraphState, config: RunnableConfig) -> dict[str, A
         Ticket.model_validate(state["ticket"]),
         state.get("draft", ""),
         _actions(state),
+        rewrite=deps.switches.rewrite,
     )
     return {"reply": final.text, "unbacked": final.unbacked, "usage": _usage(state, final.usage)}
 

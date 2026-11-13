@@ -9,7 +9,7 @@ from parley.agent.llm import LLMClient, Usage
 from parley.agent.result import AgentResult, EscalationRecord, StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
 from parley.orchestration.executor import ExecutedAction
-from parley.orchestration.graph import GraphDeps, build_graph
+from parley.orchestration.graph import GraphDeps, Switches, build_graph
 from parley.tools.catalog import default_registry
 from parley.tools.context import ToolContext
 
@@ -25,6 +25,7 @@ async def run_multi(
     max_cost_usd: float,
     max_revisions: int,
     checkpointer: BaseCheckpointSaver[Any] | None = None,
+    switches: Switches | None = None,
 ) -> AgentResult:
     """Run the multi-agent graph for one ticket; a paused approval still returns the reply."""
     started = time.perf_counter()
@@ -36,6 +37,7 @@ async def run_multi(
         max_steps=max_steps,
         max_cost_usd=max_cost_usd,
         max_revisions=max_revisions,
+        switches=switches,
     )
     graph = build_graph(checkpointer or InMemorySaver())
     state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=_config(ticket, deps))
@@ -80,6 +82,7 @@ def _deps(
     max_steps: int,
     max_cost_usd: float,
     max_revisions: int,
+    switches: Switches | None = None,
 ) -> GraphDeps:
     return GraphDeps(
         router_llm=router_llm,
@@ -90,6 +93,7 @@ def _deps(
         max_steps=max_steps,
         max_cost_usd=max_cost_usd,
         max_revisions=max_revisions,
+        switches=switches or Switches(),
     )
 
 

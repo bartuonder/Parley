@@ -78,7 +78,11 @@ def _find_unbacked(text: str, actions: list[ExecutedAction]) -> set[Claim]:
 
 
 async def respond(
-    llm: LLMClient, ticket: Ticket, draft: str, actions: list[ExecutedAction]
+    llm: LLMClient,
+    ticket: Ticket,
+    draft: str,
+    actions: list[ExecutedAction],
+    rewrite: bool = True,
 ) -> FinalReply:
     content = (
         f"{render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body)}\n\n"
@@ -94,6 +98,8 @@ async def respond(
     bad = _find_unbacked(text, actions)
     if not bad:
         return FinalReply(text=text, usage=usage)
+    if not rewrite:
+        return FinalReply(text=text, usage=usage, unbacked=sorted(c.value for c in bad))
     names = ", ".join(sorted(c.value for c in bad))
     messages += [
         {"role": "assistant", "content": text},
