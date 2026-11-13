@@ -131,8 +131,10 @@ def render_suite_report(
     gate: GateResult | None,
     cost_usd: float,
 ) -> str:
-    any_report = next(iter(reports.values()))
-    meta = any_report["meta"]
+    meta = next(
+        (r["meta"] for r in reports.values() if r["meta"].get("router_model")),
+        next(iter(reports.values()))["meta"],
+    )
     lines = [
         "# Evaluation report",
         "",
