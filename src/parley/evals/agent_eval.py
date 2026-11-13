@@ -9,6 +9,7 @@ from parley.agent.llm import LiteLLMClient
 from parley.db.session import session_scope
 from parley.evals.agent_run import SINGLE, Architecture, evaluate
 from parley.evals.database import recreate_eval_database
+from parley.evals.judge import judge_outcomes
 from parley.evals.loader import SCENARIO_SETS, load_set
 from parley.evals.report import (
     RepeatSummary,
@@ -107,6 +108,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
             if args.scenario_set == "dialogue"
             else None
         )
+        judge = LiteLLMClient(model=settings.judge_model) if args.judge else None
         runs: list[list[ScenarioOutcome]] = []
         spent = 0.0
         for number in range(1, args.repeats + 1):
@@ -125,7 +127,9 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
                 already_spent_usd=spent,
                 simulator=simulator,
             )
-            spent += sum(o.cost_usd + o.simulator_cost_usd for o in outcomes)
+            if judge is not None and outcomes:
+                outcomes = await judge_outcomes(judge, outcomes, scenarios)
+            spent += sum(o.cost_usd + o.simulator_cost_usd + o.judge_cost_usd for o in outcomes)
             runs.append(outcomes)
             if not is_complete(outcomes, len(scenarios)):
                 break
@@ -142,6 +146,7 @@ def main() -> None:
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
     parser.add_argument("--limit", type=int, help="run at most this many scenarios")
+    parser.add_argument("--judge", action="store_true", help="grade every reply with the LLM judge")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
     parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
@@ -168,6 +173,7 @@ def main() -> None:
         "repeats": args.repeats,
         "router_model": settings.router_model if args.arch == "multi" else None,
         "simulator_model": settings.simulator_model if args.scenario_set == "dialogue" else None,
+        "judge_model": settings.judge_model if args.judge else None,
         "max_steps": settings.agent_max_steps,
         "max_cost_usd": settings.agent_max_cost_usd,
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
