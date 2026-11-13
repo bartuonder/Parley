@@ -1,8 +1,10 @@
 import asyncio
 import json
 from datetime import timedelta
+from typing import TypedDict
 
 import pytest
+from langgraph.checkpoint.memory import InMemorySaver
 from sqlalchemy.orm import Session
 
 from parley.agent.result import AgentResult, StopReason
@@ -10,13 +12,20 @@ from parley.agent.ticket import Ticket
 from parley.backend.rules import APPROVAL_THRESHOLD_CENTS
 from parley.backend.services import Backend
 from parley.db.enums import OrderStatus, ShipmentStatus
-from parley.orchestration.runner import run_multi
+from parley.orchestration.runner import resume_multi, run_multi
 from parley.tools.context import ToolContext
 from tests.factories import NOW, make_customer, make_item, make_order, make_shipment
 from tests.fakes import ScriptedLLM, call_turn, reply_turn
 
 TICKET = Ticket(id="T-1", sender_email="ada@example.com", subject="Order", body="Refund please.")
 APPROVE = '{"approved": true, "issues": []}'
+
+
+class Limits(TypedDict):
+    model: str
+    max_steps: int
+    max_cost_usd: float
+    max_revisions: int
 
 
 @pytest.fixture
@@ -89,3 +98,29 @@ def test_a_paused_approval_still_returns_the_customer_reply(
     result = go(ctx, llm)
     assert result.extras["awaiting_approval"] is True
     assert result.reply == "Your refund is under review."
+
+
+def test_resuming_a_paused_ticket_returns_the_followup(session: Session, ctx: ToolContext) -> None:
+    amount = APPROVAL_THRESHOLD_CENTS + 5000
+    order_id = order_for(session, ctx, amount)
+    args = {"target": "order", "target_id": order_id, "amount_cents": amount, "reason": "late"}
+    llm = ScriptedLLM(
+        [
+            call_turn("propose_refund", json.dumps(args)),
+            reply_turn("Draft."),
+            reply_turn(APPROVE),
+            reply_turn("Your refund is under review."),
+        ]
+    )
+    saver = InMemorySaver()
+    limits: Limits = {"model": "scripted", "max_steps": 8, "max_cost_usd": 1.0, "max_revisions": 2}
+    router = ScriptedLLM([reply_turn("shipping")])
+    paused = asyncio.run(run_multi(router, llm, ctx, TICKET, checkpointer=saver, **limits))
+    assert paused.extras["followup"] == ""
+
+    refund_id = next(c.output["id"] for c in paused.tool_calls if c.name == "issue_refund")
+    done = asyncio.run(
+        resume_multi(router, llm, ctx, TICKET, {str(refund_id): True}, checkpointer=saver, **limits)
+    )
+    assert "approved and processed" in done.extras["followup"]
+    assert done.reply == "Your refund is under review." and not done.extras["awaiting_approval"]
