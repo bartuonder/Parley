@@ -139,13 +139,13 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 5 kickoff
-1. Propose the plan for the evaluation harness (user simulator, judge calibration, regression gate), wait for approval.
+## Today: Phase 6 kickoff
+1. Propose the plan for security and guardrails (indirect prompt injection, PII redaction, red-team set, before and after attack success), wait for approval.
 2. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
 ## Progress
 - [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
-- [ ] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
+- [x] Phase 5  - [ ] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
 (Record architectural decisions here: date, decision, reason.)
@@ -188,3 +188,9 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-12: Architectures are compared with three runs of the full set and `pass^3`, because single runs swing by a scenario. The comparison is optimistic since the multi-agent prompts were written after reading the single-agent failures on the same scenarios.
 - 2026-11-12: Specialist prompts tell the model how to use customer memory: notes are context, repeated refusals of the same request count as insistence, and a past refund or handover alone is no reason for caution. Plain notes without that guidance did not change behavior (handover accuracy 50%); with it, 12 of 12 on the four memory scenarios, a small and tuned demonstration.
 - 2026-11-13: A human decision on a waiting refund is written to customer memory (`refund_approved`, `refund_declined`) and `resume_multi` returns the follow-up message, so neither is lost after a pause. An unreadable critic answer still approves, but it is recorded as `critic_source` and reported as a rate. `.gitattributes` fixes LF line endings because the project is developed on both macOS and Windows.
+- 2026-11-13: The eval has a held-out set (`data/eval/heldout`, 31 scenarios) written before any Phase 5 tuning and reported separately. It is not clean forever: HLD-027 (a refund plus a cancellation in one ticket) and HLD-028 (wording that implied a cancellation) were changed or fixed after a first run showed them failing, and the numbers say so.
+- 2026-11-13: The user simulator is an LLM that plays a persona with facts it reveals only when asked, up to four turns. Each turn is a fresh agent run on the newest message plus the history; database state carries over. The responder is shown the actions of earlier turns of the same ticket, because without them it denied refunds it had already made. Simulator and judge cost count against the budget, not against cost per ticket.
+- 2026-11-13: The judge is a stronger model than the agent and grades four binary criteria. It was calibrated on 50 replies labeled by the same assistant that built the harness, so the agreement is with a reference that needs review, not with independent human labels. The judge prompt was revised once after the first calibration (92.5% overall agreement before, 95.5% after); both numbers are reported.
+- 2026-11-13: The regression gate compares scopes (`multi/core`, `multi/heldout`) with `reports/baseline.json` using tolerances above the observed run-to-run spread, plus the project targets. CI runs only the offline gate (every scenario of every set replayed with a scripted model); the live gate (`make eval-gate`) needs the API key and runs locally, because CI cannot spend money without a secret.
+- 2026-11-13: Every specialist can now propose a cancellation. Tickets that ask for a refund and a cancellation in one message failed under strict least privilege (HLD-027, DLG-012); proposals are still reviewed by the critic and executed by a separate step, so the risk stays low. The critic also rejects cancelling several plans on a vague request, and specialists ask which record is meant instead of guessing.
+- 2026-11-13: Ablation shows the critic is the part of the graph that matters (success drops 6 points on the core set without it). Routing and the reply rewrite showed no measurable gain with the current responder prompt and two runs per configuration; they are candidates to simplify in Phase 7, not conclusions.
