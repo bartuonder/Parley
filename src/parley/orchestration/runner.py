@@ -1,7 +1,9 @@
 import time
 from typing import Any
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
 
 from parley.agent.llm import LLMClient, Usage
 from parley.agent.result import AgentResult, EscalationRecord, StopReason, ToolInvocation
@@ -22,10 +24,64 @@ async def run_multi(
     max_steps: int,
     max_cost_usd: float,
     max_revisions: int,
+    checkpointer: BaseCheckpointSaver[Any] | None = None,
 ) -> AgentResult:
     """Run the multi-agent graph for one ticket; a paused approval still returns the reply."""
     started = time.perf_counter()
-    deps = GraphDeps(
+    deps = _deps(
+        router_llm,
+        llm,
+        ctx,
+        model,
+        max_steps=max_steps,
+        max_cost_usd=max_cost_usd,
+        max_revisions=max_revisions,
+    )
+    graph = build_graph(checkpointer or InMemorySaver())
+    state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=_config(ticket, deps))
+    return to_result(state, ticket, ctx, model, time.perf_counter() - started)
+
+
+async def resume_multi(
+    router_llm: LLMClient,
+    llm: LLMClient,
+    ctx: ToolContext,
+    ticket: Ticket,
+    decisions: dict[str, bool],
+    *,
+    model: str,
+    max_steps: int,
+    max_cost_usd: float,
+    max_revisions: int,
+    checkpointer: BaseCheckpointSaver[Any],
+) -> AgentResult:
+    """Apply human decisions to a paused ticket; the result carries the follow-up message."""
+    started = time.perf_counter()
+    deps = _deps(
+        router_llm,
+        llm,
+        ctx,
+        model,
+        max_steps=max_steps,
+        max_cost_usd=max_cost_usd,
+        max_revisions=max_revisions,
+    )
+    graph = build_graph(checkpointer)
+    state = await graph.ainvoke(Command(resume=decisions), config=_config(ticket, deps))
+    return to_result(state, ticket, ctx, model, time.perf_counter() - started)
+
+
+def _deps(
+    router_llm: LLMClient,
+    llm: LLMClient,
+    ctx: ToolContext,
+    model: str,
+    *,
+    max_steps: int,
+    max_cost_usd: float,
+    max_revisions: int,
+) -> GraphDeps:
+    return GraphDeps(
         router_llm=router_llm,
         llm=llm,
         ctx=ctx,
@@ -35,10 +91,10 @@ async def run_multi(
         max_cost_usd=max_cost_usd,
         max_revisions=max_revisions,
     )
-    graph = build_graph(InMemorySaver())
-    config: Any = {"configurable": {"thread_id": ticket.id, "deps": deps}}
-    state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=config)
-    return to_result(state, ticket, ctx, model, time.perf_counter() - started)
+
+
+def _config(ticket: Ticket, deps: GraphDeps) -> Any:
+    return {"configurable": {"thread_id": ticket.id, "deps": deps}}
 
 
 def to_result(
@@ -71,6 +127,7 @@ def to_result(
             "revisions": int(state.get("revisions", 0)),
             "critic_issues": state.get("issues", []),
             "awaiting_approval": "__interrupt__" in state,
+            "followup": state.get("followup", ""),
             "unbacked_after_rewrite": state.get("unbacked", []),
         },
     )
