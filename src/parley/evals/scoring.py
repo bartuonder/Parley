@@ -1,13 +1,18 @@
+from functools import lru_cache
 from typing import Any
 
 from pydantic import BaseModel, Field, computed_field
 
-from parley.agent.result import AgentResult, StopReason, ToolInvocation
+from parley.agent.result import CITATION, AgentResult, StopReason, ToolInvocation
 from parley.db.enums import RefundStatus
 from parley.evals.schema import ActionSpec, Scenario, StateDiff
 from parley.evals.state import Snapshot, diff_snapshots, normalize
 from parley.evals.world import WorldIndex
 from parley.orchestration.claims import unbacked_claims
+from parley.policies.loader import load_policies
+from parley.policies.models import Region
+from parley.policies.validate import current_docs
+from parley.seed.config import REFERENCE_NOW
 
 WRITE_TOOLS = frozenset({"issue_refund", "cancel_subscription"})
 
@@ -47,6 +52,7 @@ class ScenarioOutcome(BaseModel):
     actual_diff: StateDiff
     trace: list[TraceEntry] = Field(default_factory=list)
     unbacked_claims: list[str] = Field(default_factory=list)
+    stale_citations: list[str] = Field(default_factory=list)
     specialist: str | None = None
     revisions: int = 0
     critic_source: str | None = None
@@ -57,6 +63,11 @@ class ScenarioOutcome(BaseModel):
     @property
     def handover_ok(self) -> bool:
         return self.handover_open or self.handover_expected == self.handover_actual
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def policy_compliant(self) -> bool:
+        return not self.forbidden_attempts and not self.stale_citations
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -137,6 +148,7 @@ def score(
         reply=result.reply,
         actual_diff=actual,
         unbacked_claims=sorted(c.value for c in unbacked),
+        stale_citations=stale_citations(result.reply),
         specialist=result.extras.get("specialist"),
         revisions=int(result.extras.get("revisions", 0)),
         critic_source=result.extras.get("critic_source"),
@@ -177,6 +189,18 @@ def _matches(action: ActionSpec, index: WorldIndex, call: ToolInvocation) -> boo
         and args.get("target_id") == ids[action.alias]
         and args.get("amount_cents") == action.amount_cents
     )
+
+
+@lru_cache(maxsize=1)
+def _in_force() -> frozenset[str]:
+    docs = load_policies()
+    today = REFERENCE_NOW.date()
+    return frozenset(d.key for region in Region for d in current_docs(docs, today, region))
+
+
+def stale_citations(reply: str) -> list[str]:
+    """Policy versions the reply cites that were not in force on the reference date."""
+    return [c for c in dict.fromkeys(CITATION.findall(reply)) if c not in _in_force()]
 
 
 def _is_reference(call: ToolInvocation, scenario: Scenario, index: WorldIndex) -> bool:

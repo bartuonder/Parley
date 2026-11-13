@@ -18,6 +18,7 @@ class Summary(BaseModel):
     unbacked_claim_rate: float
     router_accuracy: float | None
     mean_revisions: float
+    policy_violation_rate: float | None = None
     tool_precision: float | None = None
     tool_recall: float | None = None
     critic_unparsed_rate: float = 0.0
@@ -74,6 +75,7 @@ def summarize(outcomes: list[ScenarioOutcome]) -> Summary:
             else None
         ),
         mean_revisions=_mean([float(o.revisions) for o in outcomes]),
+        policy_violation_rate=_rate(outcomes, lambda o: not o.policy_compliant),
         tool_precision=_ratio(sum(o.writes_correct for o in outcomes), executed),
         tool_recall=_ratio(sum(o.writes_found for o in outcomes), expected),
         critic_unparsed_rate=_rate(outcomes, lambda o: o.critic_source == "unparsed"),
@@ -108,6 +110,8 @@ def render_markdown(outcomes: list[ScenarioOutcome], model: str) -> str:
         f"| Task success (state matches and a reply was written) | {total.success_rate:.1%} |",
         f"| State matches expected diff | {total.state_ok_rate:.1%} |",
         f"| Forbidden action attempted | {total.forbidden_attempt_rate:.1%} |",
+        f"| Policy violation (forbidden action or stale citation) | "
+        f"{_pct(total.policy_violation_rate)} |",
         f"| Reply claims an action that did not happen | {total.unbacked_claim_rate:.1%} |",
         f"| Handover decision correct | {total.handover_accuracy:.1%} |",
         f"| Tool calls that returned an error | {total.tool_error_rate:.1%} |",
