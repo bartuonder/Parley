@@ -9,7 +9,7 @@ from parley.agent.llm import LiteLLMClient
 from parley.db.session import session_scope
 from parley.evals.agent_run import SINGLE, Architecture, evaluate
 from parley.evals.database import recreate_eval_database
-from parley.evals.loader import MEMORY_SCENARIO_DIR, load_scenarios
+from parley.evals.loader import SCENARIO_SETS, load_set
 from parley.evals.report import (
     RepeatSummary,
     group_by,
@@ -131,7 +131,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the agent on the eval scenarios.")
     parser.add_argument("--arch", choices=["single", "multi"], default="single")
-    parser.add_argument("--set", dest="scenario_set", choices=["core", "memory"], default="core")
+    parser.add_argument("--set", dest="scenario_set", choices=sorted(SCENARIO_SETS), default="core")
     parser.add_argument("--repeats", type=int, default=1, help="how many times to run the set")
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
@@ -141,9 +141,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
     args = parser.parse_args()
 
-    directory = MEMORY_SCENARIO_DIR if args.scenario_set == "memory" else None
-    pool = load_scenarios(directory) if directory else load_scenarios()
-    scenarios = select_scenarios(pool, args.ids, args.category, args.limit)
+    scenarios = select_scenarios(load_set(args.scenario_set), args.ids, args.category, args.limit)
+    if not scenarios:
+        raise SystemExit(f"no scenarios selected from the {args.scenario_set} set")
     runs = asyncio.run(run(args, scenarios))
     settings = get_settings()
     model = args.model or settings.agent_model
