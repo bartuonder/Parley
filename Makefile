@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval agent-eval api rag-index rag-eval up down
+.PHONY: setup test lint format migrate seed eval eval-gate judge-calibrate agent-eval api rag-index rag-eval up down
 
 setup:
 	uv sync
@@ -29,8 +29,14 @@ migrate:
 seed: up migrate
 	uv run python -m parley.seed
 
-eval:
-	@echo "eval: not implemented yet (Phase 5)"
+eval: up
+	uv run python -m parley.evals.suite $(ARGS)
+
+eval-gate: up
+	uv run python -m parley.evals.suite --profile gate --repeats 3 $(ARGS)
+
+judge-calibrate:
+	uv run python -m parley.evals.calibration $(ARGS)
 
 agent-eval: up
 	uv run python -m parley.evals.agent_eval $(ARGS)
