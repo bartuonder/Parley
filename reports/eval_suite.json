@@ -1,0 +1,152 @@
+{
+  "meta": {
+    "profile": "full",
+    "cost_usd": 5.391636599999999
+  },
+  "metrics": {
+    "single/core": {
+      "success_rate": 0.9318181818181818,
+      "pass_all": 0.8545454545454545,
+      "policy_violation_rate": 0.004545454545454545,
+      "unbacked_claim_rate": 0.00909090909090909,
+      "handover_accuracy": 0.9090909090909091,
+      "tool_precision": 0.9295774647887324,
+      "tool_recall": 0.868421052631579,
+      "mean_cost_usd": 0.0019202927272727274,
+      "judge_facts_covered": 0.7818181818181819,
+      "judge_no_false_claims": 0.9545454545454546,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/core": {
+      "success_rate": 0.9954545454545455,
+      "pass_all": 0.9818181818181818,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9136363636363637,
+      "tool_precision": 0.987012987012987,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.002657224545454546,
+      "judge_facts_covered": 0.8318181818181818,
+      "judge_no_false_claims": 0.9727272727272728,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "single/heldout": {
+      "success_rate": 0.9112903225806451,
+      "pass_all": 0.8387096774193549,
+      "policy_violation_rate": 0.04032258064516129,
+      "unbacked_claim_rate": 0.04032258064516129,
+      "handover_accuracy": 0.8870967741935484,
+      "tool_precision": 0.8490566037735849,
+      "tool_recall": 0.8653846153846154,
+      "mean_cost_usd": 0.0018562516129032257,
+      "judge_facts_covered": 0.7983870967741935,
+      "judge_no_false_claims": 0.9193548387096774,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/heldout": {
+      "success_rate": 0.9919354838709677,
+      "pass_all": 0.967741935483871,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.8709677419354839,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9807692307692307,
+      "mean_cost_usd": 0.002956074193548387,
+      "judge_facts_covered": 0.717741935483871,
+      "judge_no_false_claims": 0.9435483870967742,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "single/dialogue": {
+      "success_rate": 0.8214285714285714,
+      "pass_all": 0.6428571428571429,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9285714285714286,
+      "tool_precision": 0.5932203389830508,
+      "tool_recall": 0.9166666666666666,
+      "mean_cost_usd": 0.0046726,
+      "judge_facts_covered": 0.875,
+      "judge_no_false_claims": 0.8571428571428571,
+      "judge_no_leak": 0.9821428571428571,
+      "judge_professional_tone": 1.0
+    },
+    "multi/dialogue": {
+      "success_rate": 0.9821428571428571,
+      "pass_all": 0.9285714285714286,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.8392857142857143,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9722222222222222,
+      "mean_cost_usd": 0.008401510714285713,
+      "judge_facts_covered": 0.875,
+      "judge_no_false_claims": 0.9107142857142857,
+      "judge_no_leak": 0.9821428571428571,
+      "judge_professional_tone": 1.0
+    },
+    "multi-no_critic/core": {
+      "success_rate": 0.9363636363636364,
+      "pass_all": 0.9090909090909091,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9,
+      "tool_precision": 0.8780487804878049,
+      "tool_recall": 0.9473684210526315,
+      "mean_cost_usd": 0.0021427554545454543
+    },
+    "multi-no_critic/heldout": {
+      "success_rate": 0.967741935483871,
+      "pass_all": 0.9354838709677419,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9032258064516129,
+      "tool_precision": 0.9259259259259259,
+      "tool_recall": 0.9615384615384616,
+      "mean_cost_usd": 0.0021998387096774192
+    },
+    "multi-no_rewrite/core": {
+      "success_rate": 1.0,
+      "pass_all": 1.0,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9272727272727272,
+      "tool_precision": 1.0,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.0025073445454545456
+    },
+    "multi-no_rewrite/heldout": {
+      "success_rate": 0.967741935483871,
+      "pass_all": 0.967741935483871,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9354838709677419,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9230769230769231,
+      "mean_cost_usd": 0.0027356709677419356
+    },
+    "multi-no_router/core": {
+      "success_rate": 1.0,
+      "pass_all": 1.0,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9272727272727272,
+      "tool_precision": 1.0,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.0025226000000000003
+    },
+    "multi-no_router/heldout": {
+      "success_rate": 0.9838709677419355,
+      "pass_all": 0.967741935483871,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.8387096774193549,
+      "tool_precision": 0.9629629629629629,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.0028000645161290324
+    }
+  }
+}
