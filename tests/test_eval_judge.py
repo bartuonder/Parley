@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+import pytest
+
 from parley.db.enums import RefundStatus
 from parley.evals.judge import CRITERIA, describe_happened, judge_outcomes, judge_reply
 from parley.evals.loader import load_scenarios
@@ -34,8 +36,16 @@ def test_a_readable_verdict_carries_every_criterion_and_the_cost() -> None:
 def test_an_unreadable_or_incomplete_verdict_is_not_a_grade() -> None:
     partial = json.dumps({"facts_covered": {"pass": True, "reason": ""}})
     for text in ("looks good", "{}", partial, '{"facts_covered": {"pass": "yes"}}'):
-        verdict = asyncio.run(judge_reply(ScriptedLLM([reply_turn(text)]), "t", "h", [], "r"))
-        assert verdict is None
+        llm = ScriptedLLM([reply_turn(text), reply_turn(text)])
+        assert asyncio.run(judge_reply(llm, "t", "h", [], "r")) is None
+
+
+def test_one_unreadable_answer_is_retried_and_both_calls_are_priced() -> None:
+    llm = ScriptedLLM(
+        [reply_turn("oops", cost_usd=0.01), reply_turn(verdict_json(), cost_usd=0.02)]
+    )
+    verdict = asyncio.run(judge_reply(llm, "t", "h", [], "r"))
+    assert verdict is not None and verdict.usage.cost_usd == pytest.approx(0.03)
 
 
 def test_the_record_of_what_happened_is_built_from_the_scored_outcome() -> None:
@@ -73,7 +83,8 @@ def test_outcomes_are_graded_with_the_scenario_facts_and_empty_replies_are_skipp
 
 
 def test_an_ungradable_reply_keeps_its_outcome_without_a_verdict() -> None:
-    result = asyncio.run(judge_outcomes(ScriptedLLM([reply_turn("no")]), [graded()], []))
+    llm = ScriptedLLM([reply_turn("no"), reply_turn("still no")])
+    result = asyncio.run(judge_outcomes(llm, [graded()], []))
     assert result[0].judge is None and result[0].reply == "Hello."
 
 
@@ -90,3 +101,13 @@ def test_pass_rates_are_summarized_per_criterion_over_graded_replies_only() -> N
     )
     assert "| Judge: no leak | 50.0% |" in render_markdown([good, bad], "m")
     assert summarize([graded("D")]).judge_pass_rates is None
+
+
+def test_a_verdict_that_says_fail_instead_of_pass_is_understood() -> None:
+    text = json.loads(verdict_json())
+    text["no_leak"] = {"fail": True, "reason": "names another customer"}
+    verdict = asyncio.run(
+        judge_reply(ScriptedLLM([reply_turn(json.dumps(text))]), "t", "h", [], "r")
+    )
+    assert verdict is not None and verdict.passes["no_leak"] is False
+    assert verdict.passes["facts_covered"] is True
