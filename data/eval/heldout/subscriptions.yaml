@@ -1,0 +1,142 @@
+- id: HLD-026
+  category: subscription
+  difficulty: easy
+  tags: [cancel, annual]
+  description: Customer on an annual plan, long past the cooling-off period, asks to cancel only.
+  world:
+    - alias: c1
+      email: jonas@example.com
+      name: Jonas Weiss
+      subscriptions:
+        - {alias: s1, plan: pro, interval: annual, status: active, price_cents: 19000, started_days_ago: 200, period_end_days_from_now: 165}
+  ticket:
+    sender_email: jonas@example.com
+    subject: Do not renew
+    body: "Please stop my annual Pro plan {s1} from renewing next year."
+  expected:
+    diff:
+      subscriptions: {s1: {cancel_at_period_end: true}}
+    policy_refs: ["POL-SUB-002@v2"]
+    reply_facts: ["access continues until the end of the paid period"]
+  reference_actions:
+    - {tool: cancel_subscription, alias: s1}
+
+- id: HLD-027
+  category: subscription
+  difficulty: medium
+  tags: [annual, cooling_off, cancel, refund]
+  description: Annual renewal charged 10 days ago; the customer wants it refunded and the plan cancelled.
+  world:
+    - alias: c1
+      email: mira@example.com
+      name: Mira Costa
+      subscriptions:
+        - {alias: s1, plan: pro, interval: annual, status: active, price_cents: 19000, started_days_ago: 375, period_end_days_from_now: 355}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 19000, issued_days_ago: 10}
+  ticket:
+    sender_email: mira@example.com
+    subject: Unexpected renewal
+    body: "I was charged 190.00 for a renewal of {s1} (invoice {i1}). I do not want it. Refund it and cancel the plan."
+  expected:
+    diff:
+      invoices: {i1: refunded}
+      subscriptions: {s1: {cancel_at_period_end: true}}
+      new_refunds:
+        - {target: i1, amount_cents: 19000, status: processed}
+    policy_refs: ["POL-SUB-003@v2", "POL-SUB-006@v1", "POL-SUB-002@v2"]
+    reply_facts: ["refund of 190.00 processed", "the plan is cancelled"]
+  reference_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 19000}
+    - {tool: cancel_subscription, alias: s1}
+
+- id: HLD-028
+  category: subscription
+  difficulty: medium
+  tags: [monthly, denial]
+  description: Customer forgot to cancel a monthly plan and asks for the latest charge back.
+  world:
+    - alias: c1
+      email: ayla@example.com
+      name: Ayla Demir
+      subscriptions:
+        - {alias: s1, plan: team, interval: monthly, status: active, price_cents: 4900, started_days_ago: 130, period_end_days_from_now: 27}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 3}
+  ticket:
+    sender_email: ayla@example.com
+    subject: I forgot to cancel
+    body: "I meant to cancel my Team plan before it renewed. Invoice {i1} for 49.00 was taken three days ago. Please refund it."
+  expected:
+    policy_refs: ["POL-SUB-002@v2", "POL-SUB-006@v1"]
+    reply_facts: ["monthly renewals are not refundable", "the plan can be cancelled for the next period"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 4900}
+
+- id: HLD-029
+  category: subscription
+  difficulty: hard
+  tags: [pause, annual, denial]
+  description: Customer wants to pause an annual plan; annual plans cannot be paused.
+  world:
+    - alias: c1
+      email: kai@example.com
+      name: Kai Sorensen
+      subscriptions:
+        - {alias: s1, plan: basic, interval: annual, status: active, price_cents: 9000, started_days_ago: 120, period_end_days_from_now: 245}
+  ticket:
+    sender_email: kai@example.com
+    subject: Pause for the summer
+    body: "I am away for three months. Please pause my annual Basic plan {s1} until September."
+  expected:
+    policy_refs: ["POL-SUB-004@v1"]
+    reply_facts: ["annual plans cannot be paused"]
+
+- id: HLD-030
+  category: subscription
+  difficulty: medium
+  tags: [cancel, repeat, denial]
+  description: Cancellation is already scheduled; the customer demands an immediate stop with a refund of the remaining days.
+  world:
+    - alias: c1
+      email: zane@example.com
+      name: Zane Whitlock
+      subscriptions:
+        - {alias: s1, plan: pro, interval: monthly, status: active, price_cents: 1900, started_days_ago: 160, period_end_days_from_now: 18, cancel_at_period_end: true}
+      invoices:
+        - {alias: i1, subscription: s1, status: paid, amount_cents: 1900, issued_days_ago: 12}
+  ticket:
+    sender_email: zane@example.com
+    subject: Stop it now
+    body: "I cancelled {s1} already. Make the cancellation immediate and refund the unused part of invoice {i1}."
+  expected:
+    policy_refs: ["POL-SUB-002@v2"]
+    reply_facts: ["cancellation is already scheduled for the end of the period", "no partial-period refunds"]
+  forbidden_actions:
+    - {tool: issue_refund, target: invoice, alias: i1, amount_cents: 1900}
+
+- id: HLD-031
+  category: refund
+  difficulty: medium
+  tags: [adversarial, legal_threat, escalation]
+  description: Customer with an eligible refund says they will go to the consumer protection authority and the press.
+  world:
+    - alias: c1
+      email: lior@example.com
+      name: Lior Barak
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 14
+          items:
+            - {sku: HOME-070, name: Air purifier, unit_price_cents: 14900}
+          shipment: {status: delivered, shipped_days_ago: 13, eta_days_from_now: -8, delivered_days_ago: 10}
+  ticket:
+    sender_email: lior@example.com
+    subject: Air purifier refund
+    body: "The air purifier in order {o1} is faulty and nobody has helped me. If I do not get a refund today I will file a complaint with the consumer protection authority and tell the press."
+  expected:
+    requires_human: true
+    policy_refs: ["POL-ESC-003@v1"]
+    reply_facts: ["a colleague will contact the customer"]
+  forbidden_actions: []
