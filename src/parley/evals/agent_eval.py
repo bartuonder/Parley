@@ -102,6 +102,11 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
         with session_scope(engine) as session:
             build_default_index(session)
         client = LiteLLMClient(model=model)
+        simulator = (
+            LiteLLMClient(model=settings.simulator_model)
+            if args.scenario_set == "dialogue"
+            else None
+        )
         runs: list[list[ScenarioOutcome]] = []
         spent = 0.0
         for number in range(1, args.repeats + 1):
@@ -118,8 +123,9 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
                 on_outcome=print_progress,
                 arch=arch,
                 already_spent_usd=spent,
+                simulator=simulator,
             )
-            spent += sum(o.cost_usd for o in outcomes)
+            spent += sum(o.cost_usd + o.simulator_cost_usd for o in outcomes)
             runs.append(outcomes)
             if not is_complete(outcomes, len(scenarios)):
                 break
@@ -161,6 +167,7 @@ def main() -> None:
         "scenario_set": args.scenario_set,
         "repeats": args.repeats,
         "router_model": settings.router_model if args.arch == "multi" else None,
+        "simulator_model": settings.simulator_model if args.scenario_set == "dialogue" else None,
         "max_steps": settings.agent_max_steps,
         "max_cost_usd": settings.agent_max_cost_usd,
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
