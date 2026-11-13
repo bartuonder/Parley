@@ -133,6 +133,7 @@ class StateDiff(Strict):
 class Expected(Strict):
     diff: StateDiff = Field(default_factory=StateDiff)
     requires_human: bool = False
+    handover_open: bool = False
     policy_refs: list[str] = Field(default_factory=list)
     reply_facts: list[str] = Field(default_factory=list)
 

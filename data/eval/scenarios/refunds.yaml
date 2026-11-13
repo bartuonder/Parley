@@ -529,6 +529,7 @@
     body: "I asked for a refund of order {o1} yesterday. Please process it now."
   expected:
     requires_human: true
+    handover_open: true
     policy_refs: ["POL-REF-007@v2"]
     reply_facts: ["refund is still under review"]
   forbidden_actions:

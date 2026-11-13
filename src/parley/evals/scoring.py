@@ -26,6 +26,7 @@ class ScenarioOutcome(BaseModel):
     forbidden_attempts: list[str] = Field(default_factory=list)
     handover_expected: bool
     handover_actual: bool
+    handover_open: bool = False
     replied: bool
     policy_recall: float | None
     stop_reason: str
@@ -49,7 +50,7 @@ class ScenarioOutcome(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def handover_ok(self) -> bool:
-        return self.handover_expected == self.handover_actual
+        return self.handover_open or self.handover_expected == self.handover_actual
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -109,6 +110,7 @@ def score(
         forbidden_attempts=forbidden_attempts(scenario.forbidden_actions, index, result.tool_calls),
         handover_expected=scenario.expected.requires_human,
         handover_actual=handed_over,
+        handover_open=scenario.expected.handover_open,
         replied=bool(result.reply) and result.stop_reason == StopReason.REPLY,
         policy_recall=_policy_recall(scenario.expected.policy_refs, result.cited_policies),
         stop_reason=result.stop_reason,
