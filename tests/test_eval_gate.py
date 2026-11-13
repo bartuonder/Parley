@@ -12,6 +12,7 @@ from parley.evals.gate import (
     extract_metrics,
     load_metrics,
     render_gate,
+    select_scopes,
 )
 from tests.test_eval_report import outcome
 
@@ -99,3 +100,11 @@ def test_the_committed_baseline_is_readable_when_present(tmp_path: Path) -> None
     with pytest.raises(KeyError):
         path.write_text("{}", encoding="utf-8")
         load_metrics(path)
+
+
+def test_a_baseline_can_keep_only_some_scopes_and_rejects_unknown_ones() -> None:
+    both: dict[str, Metrics] = {**BASE, "single/core": {"success_rate": 0.9}}
+    assert list(select_scopes(both, ["multi/core"])) == ["multi/core"]
+    assert select_scopes(both, []) == both
+    with pytest.raises(SystemExit, match="nope/core"):
+        select_scopes(both, ["nope/core"])
