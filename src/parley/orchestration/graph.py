@@ -11,7 +11,7 @@ from parley.agent.llm import LLMClient, Usage
 from parley.agent.loop import run_ticket
 from parley.agent.result import StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
-from parley.memory.facts import facts_from_run
+from parley.memory.facts import decision_facts, facts_from_run
 from parley.memory.store import recall, remember, render_memory
 from parley.orchestration.critic import review
 from parley.orchestration.executor import ExecutedAction, execute_proposals
@@ -216,6 +216,13 @@ async def approval(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         lines.append(
             f"Your refund of {money(int(action.arguments['amount_cents']))} was {verdict}."
         )
+    remember(
+        deps.ctx.backend.session,
+        deps.ctx.customer_id,
+        state["ticket"]["id"],
+        decision_facts(waiting, decisions),
+        deps.ctx.backend.now(),
+    )
     deps.ctx.backend.session.commit()
     return {"followup": " ".join(lines)}
 

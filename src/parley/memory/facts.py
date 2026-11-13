@@ -41,3 +41,23 @@ def facts_from_run(
                 )
             )
     return facts
+
+
+def decision_facts(
+    actions: list[ExecutedAction], decisions: dict[str, bool]
+) -> list[tuple[str, str]]:
+    """Facts for waiting refunds once a human has decided them."""
+    facts: list[tuple[str, str]] = []
+    for action in actions:
+        args = action.arguments
+        what = (
+            f"Refund of {money(int(args['amount_cents']))} for {args['target']} {args['target_id']}"
+        )
+        approved = bool(decisions.get(str(action.output["id"]), False))
+        kind, state = (
+            ("refund_approved", "was approved by a human and processed")
+            if approved
+            else ("refund_declined", "was declined by a human")
+        )
+        facts.append((kind, f"{what} {state}"))
+    return facts
