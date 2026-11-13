@@ -5,6 +5,7 @@ import pytest
 from parley.agent.ticket import Ticket
 from parley.db.enums import TicketCategory
 from parley.orchestration.router import (
+    ACCEPTED_SPECIALISTS,
     CATEGORY_SPECIALIST,
     DEFAULT_SPECIALIST,
     ROUTER_PROMPT,
@@ -45,3 +46,7 @@ def test_router_asks_with_the_ticket_and_returns_usage() -> None:
 
 def test_every_ticket_category_has_an_expected_specialist() -> None:
     assert set(CATEGORY_SPECIALIST) == {c.value for c in TicketCategory}
+
+    assert set(ACCEPTED_SPECIALISTS) == set(CATEGORY_SPECIALIST)
+    for category, expected in CATEGORY_SPECIALIST.items():
+        assert expected in ACCEPTED_SPECIALISTS[category]

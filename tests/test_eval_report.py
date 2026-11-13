@@ -158,3 +158,11 @@ def test_policy_violations_are_forbidden_attempts_or_stale_citations() -> None:
     stale = outcome("C").model_copy(update={"stale_citations": ["POL-REF-001@v1"]})
     assert clean.policy_compliant and not forbidden.policy_compliant and not stale.policy_compliant
     assert summarize([clean, forbidden, stale, clean]).policy_violation_rate == 0.5
+
+
+def test_routing_accepts_the_specialists_that_can_solve_the_ticket_category() -> None:
+    renewal = outcome("A", category="subscription").model_copy(update={"specialist": "billing"})
+    parcel = outcome("B", category="refund").model_copy(update={"specialist": "shipping"})
+    wrong = outcome("C", category="billing").model_copy(update={"specialist": "subscription"})
+    assert summarize([renewal, parcel]).router_accuracy == 1.0
+    assert summarize([wrong]).router_accuracy == 0.0
