@@ -12,7 +12,7 @@ from parley.agent.loop import run_ticket
 from parley.agent.result import StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
 from parley.memory.facts import decision_facts, facts_from_run
-from parley.memory.store import recall, remember, render_memory
+from parley.memory.store import recall, recall_for_ticket, remember, render_memory
 from parley.orchestration.critic import review
 from parley.orchestration.executor import ExecutedAction, execute_proposals
 from parley.orchestration.responder import money, respond
@@ -184,6 +184,9 @@ async def respond_node(state: GraphState, config: RunnableConfig) -> dict[str, A
         state.get("draft", ""),
         _actions(state),
         rewrite=deps.switches.rewrite,
+        earlier=recall_for_ticket(
+            deps.ctx.backend.session, deps.ctx.customer_id, state["ticket"]["id"]
+        ),
     )
     return {"reply": final.text, "unbacked": final.unbacked, "usage": _usage(state, final.usage)}
 
