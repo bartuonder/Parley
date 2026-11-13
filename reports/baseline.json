@@ -1,0 +1,32 @@
+{
+  "metrics": {
+    "multi/core": {
+      "success_rate": 0.9954545454545455,
+      "pass_all": 0.9818181818181818,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9136363636363637,
+      "tool_precision": 0.987012987012987,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.002657224545454546,
+      "judge_facts_covered": 0.8318181818181818,
+      "judge_no_false_claims": 0.9727272727272728,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/heldout": {
+      "success_rate": 0.9919354838709677,
+      "pass_all": 0.967741935483871,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.8709677419354839,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9807692307692307,
+      "mean_cost_usd": 0.002956074193548387,
+      "judge_facts_covered": 0.717741935483871,
+      "judge_no_false_claims": 0.9435483870967742,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    }
+  }
+}
