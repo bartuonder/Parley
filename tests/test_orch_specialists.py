@@ -51,6 +51,9 @@ def test_prompt_is_filled_and_states_the_proposal_contract(specialist: Specialis
 def test_the_prompt_separates_denials_from_handovers_and_asks_when_a_request_is_ambiguous() -> None:
     prompt = specialist_prompt(Specialist.SHIPPING, date(2026, 6, 1))
     assert "explain the denial and propose no handover" in prompt
+    assert "that is insistence, and it goes to a human" in prompt
+    assert "that is insistence, and it goes to a human" in prompt
+    assert "that is insistence, and it goes to a human" in prompt
     assert "never work them out yourself" in prompt
     assert "ask which one in your final message and propose nothing yet" in prompt
     assert "annual plans cannot be paused" in specialist_prompt(
