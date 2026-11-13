@@ -14,7 +14,7 @@ from parley.evals.agent_run import (
     evaluate,
     run_scenario,
 )
-from parley.evals.loader import load_scenarios
+from parley.evals.loader import load_scenarios, load_set
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
 from parley.evals.world import WorldIndex
@@ -28,7 +28,7 @@ from tests.fakes import (
     router_for,
 )
 
-SCENARIOS = load_scenarios()
+SCENARIOS = [*load_scenarios(), *load_set("heldout")]
 MODEL = "scripted"
 MAX_STEPS = 8
 MAX_COST = 1.0

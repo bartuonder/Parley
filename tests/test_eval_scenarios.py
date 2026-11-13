@@ -101,3 +101,14 @@ def test_every_scenario_states_its_policy_basis() -> None:
 def test_the_already_pending_refund_scenario_marks_its_handover_as_open() -> None:
     open_ones = [s.id for s in SCENARIOS if s.expected.handover_open]
     assert open_ones == ["REF-019"]
+
+
+def test_the_held_out_set_is_separate_and_covers_every_category() -> None:
+    held_out = load_set("heldout")
+    assert len(held_out) >= 30
+    assert all(s.id.startswith("HLD-") for s in held_out)
+    assert {s.category for s in held_out} == set(TicketCategory)
+    assert any(s.expected.requires_human for s in held_out)
+    assert sum(1 for s in held_out if "denial" in s.tags) >= 6
+    core_texts = {s.ticket.body for s in SCENARIOS}
+    assert not core_texts & {s.ticket.body for s in held_out}
