@@ -28,7 +28,7 @@ from tests.fakes import (
     router_for,
 )
 
-SCENARIOS = [*load_scenarios(), *load_set("heldout")]
+SCENARIOS = [*load_scenarios(), *load_set("heldout"), *load_set("dialogue")]
 MODEL = "scripted"
 MAX_STEPS = 8
 MAX_COST = 1.0
@@ -36,6 +36,10 @@ MAX_COST = 1.0
 
 def no_retriever(_: Session) -> None:
     return None
+
+
+def finished_customer() -> ScriptedLLM:
+    return ScriptedLLM([reply_turn('{"message": "", "done": true}')])
 
 
 def play(session: Session, scenario: Scenario, llm_for: LLMFactory) -> ScenarioOutcome:
@@ -48,6 +52,7 @@ def play(session: Session, scenario: Scenario, llm_for: LLMFactory) -> ScenarioO
             model=MODEL,
             max_steps=MAX_STEPS,
             max_cost_usd=MAX_COST,
+            simulator=finished_customer(),
         )
     )
 
@@ -175,6 +180,7 @@ def test_reference_plan_scores_perfectly_through_the_multi_agent_graph(
             max_steps=MAX_STEPS,
             max_cost_usd=MAX_COST,
             arch=MULTI,
+            simulator=finished_customer(),
         )
     )
     assert outcome.state_ok and outcome.success and outcome.error is None

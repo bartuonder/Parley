@@ -112,3 +112,12 @@ def test_the_held_out_set_is_separate_and_covers_every_category() -> None:
     assert sum(1 for s in held_out if "denial" in s.tags) >= 6
     core_texts = {s.ticket.body for s in SCENARIOS}
     assert not core_texts & {s.ticket.body for s in held_out}
+
+
+def test_dialogue_scenarios_define_a_persona_and_end_in_a_checkable_state() -> None:
+    dialogues = load_set("dialogue")
+    assert len(dialogues) >= 12 and all(s.id.startswith("DLG-") for s in dialogues)
+    assert all(s.dialogue is not None and s.dialogue.goal for s in dialogues)
+    tags = {tag for s in dialogues for tag in s.tags}
+    assert {"missing_info", "changes_mind", "frustration", "escalation"} <= tags
+    assert not [s.id for s in SCENARIOS if s.dialogue is not None]
