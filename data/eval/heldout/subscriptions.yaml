@@ -54,7 +54,7 @@
   category: subscription
   difficulty: medium
   tags: [monthly, denial]
-  description: Customer forgot to cancel a monthly plan and asks for the latest charge back.
+  description: Customer wants the latest monthly charge back but keeps the plan.
   world:
     - alias: c1
       email: ayla@example.com
@@ -65,8 +65,8 @@
         - {alias: i1, subscription: s1, status: paid, amount_cents: 4900, issued_days_ago: 3}
   ticket:
     sender_email: ayla@example.com
-    subject: I forgot to cancel
-    body: "I meant to cancel my Team plan before it renewed. Invoice {i1} for 49.00 was taken three days ago. Please refund it."
+    subject: Charge I did not expect
+    body: "My Team plan renewed three days ago and invoice {i1} for 49.00 was taken. I am staying on the plan for now, but please refund that charge."
   expected:
     policy_refs: ["POL-SUB-002@v2", "POL-SUB-006@v1"]
     reply_facts: ["monthly renewals are not refundable", "the plan can be cancelled for the next period"]
