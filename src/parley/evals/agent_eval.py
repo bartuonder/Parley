@@ -21,15 +21,24 @@ from parley.evals.report import (
 )
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
+from parley.orchestration.graph import Switches
 from parley.rag.service import build_default_index, default_retriever
 from parley.settings import PROJECT_ROOT, get_settings
 
 DEFAULT_TOTAL_BUDGET_USD = 3.0
 
 
-def default_out(arch: str, scenario_set: str = "core") -> Path:
+ABLATIONS: dict[str, Switches] = {
+    "critic": Switches(critic=False),
+    "rewrite": Switches(rewrite=False),
+    "router": Switches(route=False),
+}
+
+
+def default_out(arch: str, scenario_set: str = "core", ablation: str | None = None) -> Path:
+    name = f"agent_{arch}" + (f"_no_{ablation}" if ablation else "")
     suffix = "" if scenario_set == "core" else f"_{scenario_set}"
-    return PROJECT_ROOT / "reports" / f"agent_{arch}{suffix}.json"
+    return PROJECT_ROOT / "reports" / f"{name}{suffix}.json"
 
 
 def select_scenarios(
@@ -98,6 +107,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
             name="multi",
             router_llm_factory=lambda scenario, index: router,
             max_revisions=settings.agent_max_revisions,
+            switches=ABLATIONS.get(args.ablate or "", Switches()),
         )
     try:
         with session_scope(engine) as session:
@@ -146,11 +156,16 @@ def main() -> None:
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
     parser.add_argument("--limit", type=int, help="run at most this many scenarios")
+    parser.add_argument(
+        "--ablate", choices=sorted(ABLATIONS), help="turn one part of the multi-agent graph off"
+    )
     parser.add_argument("--judge", action="store_true", help="grade every reply with the LLM judge")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
     parser.add_argument("--out", type=Path, help="report path, default reports/agent_<arch>.json")
     args = parser.parse_args()
+    if args.ablate and args.arch != "multi":
+        parser.error("--ablate applies to the multi-agent graph only")
 
     scenarios = select_scenarios(load_set(args.scenario_set), args.ids, args.category, args.limit)
     if not scenarios:
@@ -174,12 +189,13 @@ def main() -> None:
         "router_model": settings.router_model if args.arch == "multi" else None,
         "simulator_model": settings.simulator_model if args.scenario_set == "dialogue" else None,
         "judge_model": settings.judge_model if args.judge else None,
+        "ablation": args.ablate,
         "max_steps": settings.agent_max_steps,
         "max_cost_usd": settings.agent_max_cost_usd,
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
         "total_budget_usd": args.budget,
     }
-    out = args.out or default_out(args.arch, args.scenario_set)
+    out = args.out or default_out(args.arch, args.scenario_set, args.ablate)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(build_report(flat, model, limits, runs), indent=2) + "\n", "utf-8")
     text = render_markdown(flat, model) + (render_repeats(repeats) if repeats else "")

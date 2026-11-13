@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from sqlalchemy import Engine
@@ -16,6 +16,7 @@ from parley.evals.schema import DialogueSpec, Scenario
 from parley.evals.scoring import ScenarioOutcome, score
 from parley.evals.state import take_snapshot
 from parley.evals.world import WorldIndex, build_world, render_text
+from parley.orchestration.graph import Switches
 from parley.orchestration.runner import run_multi
 from parley.rag.retrieval import Retriever
 from parley.seed.config import REFERENCE_NOW
@@ -37,6 +38,7 @@ class Architecture:
     name: str = "single"
     router_llm_factory: LLMFactory | None = None
     max_revisions: int = 2
+    switches: Switches = field(default_factory=Switches)
 
 
 SINGLE = Architecture()
@@ -82,6 +84,7 @@ async def run_scenario(
                 max_steps=max_steps,
                 max_cost_usd=max_cost_usd,
                 max_revisions=arch.max_revisions,
+                switches=arch.switches,
             )
         return await run_ticket(
             llm,
