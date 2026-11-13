@@ -78,6 +78,8 @@ def test_reference_agent_scores_perfectly_through_the_whole_stack(
     assert outcome.forbidden_attempts == []
     assert outcome.handover_ok
     assert outcome.error is None
+    assert outcome.writes_executed == outcome.writes_correct == len(scenario.reference_actions)
+    assert outcome.writes_found == outcome.writes_expected
 
 
 def test_attempting_a_forbidden_refund_is_flagged_even_though_the_backend_blocks_it(
@@ -98,7 +100,7 @@ def test_attempting_a_forbidden_refund_is_flagged_even_though_the_backend_blocks
     outcome = play(session, scenario, greedy)
     assert outcome.state_ok
     assert outcome.forbidden_attempts == ["issue_refund order o1"]
-    assert outcome.tool_errors == 1
+    assert outcome.tool_errors == 1 and outcome.writes_executed == 0
 
 
 def test_a_crashing_model_becomes_a_failed_outcome_and_the_run_continues(engine: Engine) -> None:
@@ -178,6 +180,7 @@ def test_reference_plan_scores_perfectly_through_the_multi_agent_graph(
     assert outcome.state_ok and outcome.success and outcome.error is None
     assert outcome.handover_ok and outcome.forbidden_attempts == []
     assert outcome.unbacked_claims == [] and outcome.revisions == 0
+    assert outcome.writes_correct == outcome.writes_executed == outcome.writes_found
     assert outcome.specialist == CATEGORY_SPECIALIST[scenario.category.value].value
 
 

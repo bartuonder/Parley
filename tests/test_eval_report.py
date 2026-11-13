@@ -137,3 +137,16 @@ def test_a_handover_that_is_already_open_needs_no_new_one() -> None:
     quiet = outcome("A", handover=(True, False))
     assert not quiet.handover_ok
     assert quiet.model_copy(update={"handover_open": True}).handover_ok
+
+
+def test_tool_precision_and_recall_pool_all_scenarios() -> None:
+    right = outcome("A").model_copy(
+        update={"writes_executed": 1, "writes_correct": 1, "writes_expected": 1, "writes_found": 1}
+    )
+    wrong = outcome("B").model_copy(
+        update={"writes_executed": 2, "writes_correct": 0, "writes_expected": 1, "writes_found": 0}
+    )
+    s = summarize([right, wrong, outcome("C")])
+    assert s.tool_precision == 1 / 3 and s.tool_recall == 0.5
+    assert summarize([outcome("D")]).tool_precision is None
+    assert "(precision)" in render_markdown([right], "m")
