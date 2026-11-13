@@ -120,3 +120,14 @@ def test_repeat_summary_renders_a_readable_line() -> None:
     runs = [[outcome("A"), outcome("B")], [outcome("A"), outcome("B", state_ok=False)]]
     text = render_repeats(summarize_repeats(runs))
     assert "2 runs" in text and "pass^2" in text and "Unstable scenarios: B" in text
+
+
+def test_unreadable_critic_answers_are_counted_for_multi_agent_runs() -> None:
+    llm_checked = outcome("A").model_copy(update={"specialist": "refund", "critic_source": "llm"})
+    unchecked = outcome("B").model_copy(
+        update={"specialist": "refund", "critic_source": "unparsed"}
+    )
+    s = summarize([llm_checked, unchecked])
+    assert s.critic_unparsed_rate == 0.5
+    assert "Critic answer unreadable" in render_markdown([llm_checked, unchecked], "m")
+    assert "Critic answer unreadable" not in render_markdown([outcome("C")], "m")

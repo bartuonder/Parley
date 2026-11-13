@@ -78,6 +78,7 @@ def test_result_maps_the_graph_state_to_the_scoring_format(
     assert result.reply.startswith("Your refund")
     assert result.extras["specialist"] == "shipping"
     assert result.extras["revisions"] == 0 and not result.extras["awaiting_approval"]
+    assert result.extras["critic_source"] == "llm"
     assert result.usage.cost_usd > 0
 
 
@@ -124,3 +125,21 @@ def test_resuming_a_paused_ticket_returns_the_followup(session: Session, ctx: To
     )
     assert "approved and processed" in done.extras["followup"]
     assert done.reply == "Your refund is under review." and not done.extras["awaiting_approval"]
+
+
+def test_an_unreadable_critic_answer_still_runs_the_plan_and_is_flagged(
+    session: Session, ctx: ToolContext
+) -> None:
+    order_id = order_for(session, ctx, 5000)
+    args = {"target": "order", "target_id": order_id, "amount_cents": 5000, "reason": "late"}
+    llm = ScriptedLLM(
+        [
+            call_turn("propose_refund", json.dumps(args)),
+            reply_turn("Draft."),
+            reply_turn("looks fine to me"),
+            reply_turn("Your refund of $50.00 was processed."),
+        ]
+    )
+    result = go(ctx, llm)
+    assert [c.name for c in result.tool_calls] == ["propose_refund", "issue_refund"]
+    assert result.extras["critic_source"] == "unparsed"
