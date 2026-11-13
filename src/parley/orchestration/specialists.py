@@ -56,10 +56,6 @@ something the policy denies. When policy simply denies a request (an order alrea
 dispatched, an annual plan that cannot be paused, charges that are not duplicates, a refund \
 outside the window), explain the denial and propose no handover. The exception is a customer \
 who keeps pushing after a refusal, asks for an exception or a goodwill credit, or says they will \
-keep asking: that is insistence, and it goes to a human. The exception is a customer \
-who keeps pushing after a refusal, asks for an exception or a goodwill credit, or says they will \
-keep asking: that is insistence, and it goes to a human. The exception is a customer \
-who keeps pushing after a refusal, asks for an exception or a goodwill credit, or says they will \
 keep asking: that is insistence, and it goes to a human.
 6. If the request could mean more than one record (two active plans, several orders or items) \
 and neither the ticket nor the records say which, do not act on any of them: ask which one in \
