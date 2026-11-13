@@ -132,6 +132,14 @@ def render_gate(result: GateResult) -> str:
     return "\n".join(lines) + f"\n\n{verdict}\n"
 
 
+def select_scopes(metrics: dict[str, Metrics], scopes: list[str]) -> dict[str, Metrics]:
+    """Keep only the named scopes; an unknown scope is an error, not a silent gap."""
+    unknown = sorted(set(scopes) - set(metrics))
+    if unknown:
+        raise SystemExit(f"scopes not in the run: {', '.join(unknown)}")
+    return {scope: metrics[scope] for scope in scopes} if scopes else metrics
+
+
 def load_metrics(path: Path) -> dict[str, Metrics]:
     data: dict[str, Metrics] = json.loads(path.read_text(encoding="utf-8"))["metrics"]
     return data
@@ -144,10 +152,12 @@ def main() -> None:
     parser.add_argument(
         "--update-baseline", action="store_true", help="accept the current run as the baseline"
     )
+    parser.add_argument("--scopes", nargs="*", default=[], help="scopes to keep in the baseline")
     args = parser.parse_args()
     current = load_metrics(args.current)
     if args.update_baseline:
-        args.baseline.write_text(json.dumps({"metrics": current}, indent=2) + "\n", "utf-8")
+        kept = select_scopes(current, args.scopes)
+        args.baseline.write_text(json.dumps({"metrics": kept}, indent=2) + "\n", "utf-8")
         print(f"baseline written to {args.baseline}")
         return
     result = check(current, load_metrics(args.baseline))
