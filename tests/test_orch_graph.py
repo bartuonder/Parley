@@ -316,3 +316,29 @@ def test_without_the_rewrite_an_unbacked_claim_is_kept_and_reported(
         ticket(),
     )
     assert state["reply"] == claim and state["unbacked"] == ["refund"]
+
+
+def test_a_second_turn_of_the_same_ticket_sees_what_was_done_in_the_first(
+    session: Session, ctx: ToolContext
+) -> None:
+    order = delivered_order(session, ctx)
+    first = ScriptedLLM(
+        [
+            propose_refund(order, 5000),
+            reply_turn("Draft."),
+            reply_turn(APPROVE),
+            reply_turn("Done."),
+        ]
+    )
+    run(deps(ctx, ScriptedLLM([reply_turn("billing")]), first), ticket())
+    second = ScriptedLLM(
+        [
+            reply_turn("Draft."),
+            reply_turn(APPROVE),
+            reply_turn("Your refund of $50.00 was processed."),
+        ]
+    )
+    state = run(deps(ctx, ScriptedLLM([reply_turn("billing")]), second), ticket("Did it work?"))
+    responder_input = second.requests[2][1]["content"]
+    assert "Done earlier in this conversation: Refund of $50.00 for order" in responder_input
+    assert state["unbacked"] == [] and "was processed" in state["reply"]

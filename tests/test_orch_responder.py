@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from parley.agent.ticket import Ticket
+from parley.memory.store import MemoryFact
 from parley.orchestration.executor import ExecutedAction
 from parley.orchestration.responder import (
     RESPONDER_PROMPT,
@@ -11,6 +12,7 @@ from parley.orchestration.responder import (
     render_facts,
     respond,
 )
+from tests.factories import NOW
 from tests.fakes import ScriptedLLM, reply_turn
 
 TICKET = Ticket(id="T-1", sender_email="ada@example.com", subject="Refund", body="Refund please")
@@ -85,3 +87,32 @@ def test_a_claim_that_survives_the_rewrite_is_reported() -> None:
     llm = ScriptedLLM([reply_turn("I have refunded you."), reply_turn("We have refunded you.")])
     final = asyncio.run(respond(llm, TICKET, "", []))
     assert final.retried and final.unbacked == ["refund"]
+
+
+def earlier_fact(kind: str, content: str) -> MemoryFact:
+    return MemoryFact(kind=kind, content=content, ticket_id="T-1", created_at=NOW)
+
+
+def test_actions_done_earlier_in_the_conversation_back_later_claims() -> None:
+    none = backing([])
+    assert not any(none.values())
+    earlier = [earlier_fact("refund_issued", "Refund of $49.00 for order 7 was processed")]
+    assert backing([], earlier) == {"refunded": True, "cancelled": False, "handed_over": False}
+    mixed = [earlier_fact("cancellation", "x"), earlier_fact("handover", "y")]
+    assert backing([], mixed) == {"refunded": False, "cancelled": True, "handed_over": True}
+
+
+def test_the_reply_may_mention_a_refund_made_in_an_earlier_turn() -> None:
+    earlier = [earlier_fact("refund_issued", "Refund of $49.00 for order 7 was processed")]
+    llm = ScriptedLLM([reply_turn("Your refund of $49.00 was processed yesterday.")])
+    final = asyncio.run(respond(llm, TICKET, "draft", [], earlier=earlier))
+    assert not final.retried and final.unbacked == []
+    content = llm.requests[0][1]["content"]
+    assert (
+        "Done earlier in this conversation: Refund of $49.00 for order 7 was processed." in content
+    )
+
+
+def test_the_prompt_forbids_placeholders_and_calling_a_paid_refund_under_review() -> None:
+    assert "Never leave placeholders" in RESPONDER_PROMPT
+    assert "never call it under review" in RESPONDER_PROMPT

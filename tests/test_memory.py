@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from parley.agent.result import ToolInvocation
 from parley.memory.facts import decision_facts, facts_from_run
-from parley.memory.store import MemoryFact, recall, remember, render_memory
+from parley.memory.store import MemoryFact, recall, recall_for_ticket, remember, render_memory
 from parley.orchestration.executor import ExecutedAction
 from tests.factories import NOW, make_customer
 
@@ -100,3 +100,15 @@ def test_human_decisions_become_facts() -> None:
     ]
     assert declined[0][0] == "refund_declined"
     assert decision_facts([waiting], {}) == declined
+
+
+def test_facts_of_one_ticket_come_back_oldest_first(session: Session) -> None:
+    customer = make_customer(session, "ada@example.com")
+    remember(session, customer.id, "T-1", [("refund_issued", "first")], NOW)
+    remember(session, customer.id, "T-2", [("handover", "other ticket")], NOW)
+    remember(session, customer.id, "T-1", [("cancellation", "second")], NOW)
+    assert [f.content for f in recall_for_ticket(session, customer.id, "T-1")] == [
+        "first",
+        "second",
+    ]
+    assert recall_for_ticket(session, customer.id, "T-9") == []
