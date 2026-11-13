@@ -146,6 +146,13 @@ class MemorySpec(Strict):
     days_ago: float = 5
 
 
+class DialogueSpec(Strict):
+    persona: str
+    goal: str
+    facts: list[str] = Field(default_factory=list)
+    max_turns: int = Field(default=4, ge=2, le=6)
+
+
 class Scenario(Strict):
     id: str = Field(pattern=r"^[A-Z]{3}-\d{3}$")
     category: TicketCategory
@@ -158,6 +165,7 @@ class Scenario(Strict):
     reference_actions: list[ActionSpec] = Field(default_factory=list)
     forbidden_actions: list[ActionSpec] = Field(default_factory=list)
     memory: list[MemorySpec] = Field(default_factory=list)
+    dialogue: DialogueSpec | None = None
 
     @model_validator(mode="after")
     def aliases_are_unique(self) -> Self:
