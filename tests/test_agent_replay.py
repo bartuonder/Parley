@@ -84,6 +84,7 @@ def test_reference_agent_scores_perfectly_through_the_whole_stack(
     assert outcome.handover_ok
     assert outcome.error is None
     assert outcome.writes_executed == outcome.writes_correct == len(scenario.reference_actions)
+    assert outcome.ticket_text.strip() and "{" not in outcome.ticket_text
     assert outcome.writes_found == outcome.writes_expected
 
 
