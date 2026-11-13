@@ -3,6 +3,7 @@ import pytest
 from parley.evals.calibration import (
     LabeledSample,
     cohens_kappa,
+    load_samples,
     measure,
     render_calibration,
 )
@@ -77,3 +78,12 @@ def test_the_calibration_table_names_every_criterion_and_the_overall_agreement()
     text = render_calibration(agreements, total=2, graded=2, model="judge-model")
     assert "`judge-model`" in text and "Labeled samples: 2" in text
     assert "| no leak | 1/2 (50%) |" in text and "Overall agreement across criteria: 87.5%." in text
+
+
+def test_the_committed_labels_are_valid_and_include_failures_of_every_criterion() -> None:
+    samples = load_samples()
+    assert len(samples) == 50 and len({s.id for s in samples}) == 50
+    assert sum(1 for s in samples if s.source == "synthetic") == 14
+    for name in CRITERIA:
+        failing = sum(1 for s in samples if not s.labels[name])
+        assert 3 <= failing <= len(samples) - 10, name
