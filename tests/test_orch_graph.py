@@ -14,7 +14,7 @@ from parley.backend.services import Backend
 from parley.db.enums import OrderStatus, RefundStatus, ShipmentStatus
 from parley.db.models import Order, Refund
 from parley.memory.store import recall
-from parley.orchestration.graph import GraphDeps, build_graph
+from parley.orchestration.graph import GraphDeps, Switches, build_graph
 from parley.tools.catalog import default_registry
 from parley.tools.context import ToolContext
 from tests.factories import NOW, make_customer, make_item, make_order, make_shipment
@@ -57,7 +57,11 @@ def ticket(body: str = "Please refund my order.") -> Ticket:
 
 
 def deps(
-    ctx: ToolContext, router: ScriptedLLM, llm: ScriptedLLM, max_revisions: int = 2
+    ctx: ToolContext,
+    router: ScriptedLLM,
+    llm: ScriptedLLM,
+    max_revisions: int = 2,
+    switches: Switches | None = None,
 ) -> GraphDeps:
     return GraphDeps(
         router_llm=router,
@@ -68,6 +72,7 @@ def deps(
         max_steps=8,
         max_cost_usd=1.0,
         max_revisions=max_revisions,
+        switches=switches or Switches(),
     )
 
 
@@ -276,3 +281,38 @@ def test_the_human_decision_is_remembered(session: Session, ctx: ToolContext) ->
     run(d, ticket(), saver, resume={str(refund_id): False})
     kinds = [f.kind for f in recall(session, ctx.customer_id)]
     assert kinds == ["refund_declined", "refund_pending"]
+
+
+def test_without_the_critic_a_legal_threat_is_no_longer_stopped(
+    session: Session, ctx: ToolContext
+) -> None:
+    order = delivered_order(session, ctx)
+    llm = ScriptedLLM([propose_refund(order, 5000), reply_turn("Draft."), reply_turn("Done.")])
+    body = "My lawyer will hear about order 1."
+    state = run(
+        deps(ctx, ScriptedLLM([reply_turn("billing")]), llm, switches=Switches(critic=False)),
+        ticket(body),
+    )
+    assert state["verdict"]["source"] == "skipped"
+    assert [a["kind"] for a in state["actions"]] == ["issue_refund"]
+
+
+def test_without_the_router_every_ticket_goes_to_billing_and_no_router_call_is_made(
+    session: Session, ctx: ToolContext
+) -> None:
+    router = ScriptedLLM([])
+    llm = ScriptedLLM([reply_turn("Draft."), reply_turn(APPROVE), reply_turn("Hello.")])
+    state = run(deps(ctx, router, llm, switches=Switches(route=False)), ticket())
+    assert state["specialist"] == "billing" and router.requests == []
+
+
+def test_without_the_rewrite_an_unbacked_claim_is_kept_and_reported(
+    session: Session, ctx: ToolContext
+) -> None:
+    claim = "I have processed the refund for you."
+    llm = ScriptedLLM([reply_turn("Draft."), reply_turn(APPROVE), reply_turn(claim)])
+    state = run(
+        deps(ctx, ScriptedLLM([reply_turn("billing")]), llm, switches=Switches(rewrite=False)),
+        ticket(),
+    )
+    assert state["reply"] == claim and state["unbacked"] == ["refund"]

@@ -1,6 +1,12 @@
 import pytest
 
-from parley.evals.agent_eval import build_report, default_out, is_complete, select_scenarios
+from parley.evals.agent_eval import (
+    ABLATIONS,
+    build_report,
+    default_out,
+    is_complete,
+    select_scenarios,
+)
 from parley.evals.loader import SCENARIO_SETS, load_scenarios, load_set
 from tests.test_eval_report import outcome
 
@@ -62,3 +68,10 @@ def test_named_sets_load_and_unknown_sets_are_rejected() -> None:
     assert set(SCENARIO_SETS) == {"core", "heldout", "memory", "dialogue"}
     with pytest.raises(KeyError, match="unknown scenario set"):
         load_set("nope")
+
+
+def test_ablated_runs_write_their_own_reports() -> None:
+    assert default_out("multi", "core", "critic").name == "agent_multi_no_critic.json"
+    assert default_out("multi", "heldout", "router").name == "agent_multi_no_router_heldout.json"
+    assert set(ABLATIONS) == {"critic", "rewrite", "router"}
+    assert ABLATIONS["critic"].critic is False and ABLATIONS["critic"].route is True
