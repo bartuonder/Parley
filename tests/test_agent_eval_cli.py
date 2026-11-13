@@ -1,7 +1,7 @@
 import pytest
 
 from parley.evals.agent_eval import build_report, default_out, is_complete, select_scenarios
-from parley.evals.loader import load_scenarios
+from parley.evals.loader import SCENARIO_SETS, load_scenarios, load_set
 from tests.test_eval_report import outcome
 
 SCENARIOS = load_scenarios()
@@ -54,3 +54,11 @@ def test_each_architecture_writes_its_own_report() -> None:
 def test_the_memory_set_writes_its_own_report_files() -> None:
     assert default_out("multi", "memory").name == "agent_multi_memory.json"
     assert default_out("single", "core").name == "agent_single.json"
+
+
+def test_named_sets_load_and_unknown_sets_are_rejected() -> None:
+    assert {s.id for s in load_set("core")} == {s.id for s in SCENARIOS}
+    assert {s.id for s in load_set("memory")} >= {"MEM-001"}
+    assert set(SCENARIO_SETS) == {"core", "heldout", "memory", "dialogue"}
+    with pytest.raises(KeyError, match="unknown scenario set"):
+        load_set("nope")
