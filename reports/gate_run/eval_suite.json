@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "profile": "gate",
+    "cost_usd": 1.30914405
+  },
+  "metrics": {
+    "multi/core": {
+      "success_rate": 1.0,
+      "pass_all": 1.0,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9636363636363636,
+      "tool_precision": 1.0,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.00290337,
+      "judge_facts_covered": 0.8242424242424242,
+      "judge_no_false_claims": 0.9696969696969697,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/heldout": {
+      "success_rate": 0.989247311827957,
+      "pass_all": 0.967741935483871,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9354838709677419,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9743589743589743,
+      "mean_cost_usd": 0.003112774193548387,
+      "judge_facts_covered": 0.7849462365591398,
+      "judge_no_false_claims": 0.9247311827956989,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    }
+  }
+}
