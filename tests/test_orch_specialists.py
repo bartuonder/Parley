@@ -26,10 +26,17 @@ def test_least_privilege_differs_per_specialist() -> None:
 
     assert "get_shipment" in names(Specialist.SHIPPING)
     assert "get_shipment" not in names(Specialist.SUBSCRIPTION)
-    assert "propose_cancel_subscription" in names(Specialist.SUBSCRIPTION)
-    assert "propose_cancel_subscription" not in names(Specialist.BILLING)
-    assert "propose_cancel_subscription" not in names(Specialist.SHIPPING)
+    assert "get_shipment" not in names(Specialist.BILLING)
+    assert "get_order" not in names(Specialist.SUBSCRIPTION)
     assert {"propose_refund", "propose_escalation"} <= names(Specialist.SUBSCRIPTION)
+
+
+@pytest.mark.parametrize("specialist", list(Specialist))
+def test_every_specialist_can_propose_a_cancellation_for_mixed_requests(
+    specialist: Specialist,
+) -> None:
+    names = {s.name for s in specialist_registry(specialist).specs}
+    assert {"propose_cancel_subscription", "get_subscription"} <= names
 
 
 @pytest.mark.parametrize("specialist", list(Specialist))
@@ -39,6 +46,16 @@ def test_prompt_is_filled_and_states_the_proposal_contract(specialist: Specialis
     assert "Today is 2026-06-01" in prompt and str(APPROVAL_THRESHOLD_CENTS) in prompt
     assert "never state that something is already done" in prompt
     assert "{" not in prompt and "}" not in prompt
+
+
+def test_the_prompt_separates_denials_from_handovers_and_asks_when_a_request_is_ambiguous() -> None:
+    prompt = specialist_prompt(Specialist.SHIPPING, date(2026, 6, 1))
+    assert "explain the denial and propose no handover" in prompt
+    assert "never work them out yourself" in prompt
+    assert "ask which one in your final message and propose nothing yet" in prompt
+    assert "annual plans cannot be paused" in specialist_prompt(
+        Specialist.SUBSCRIPTION, date(2026, 6, 1)
+    )
 
 
 def test_memory_is_included_only_when_present() -> None:
