@@ -1,0 +1,194 @@
+- id: HLD-019
+  category: shipping
+  difficulty: medium
+  tags: [lost, refund, final_sale]
+  description: Parcel is 12 days past its estimate, so it counts as lost; the whole order is refunded including a final-sale item.
+  world:
+    - alias: c1
+      email: bram@example.com
+      name: Bram de Vries
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 30
+          items:
+            - {sku: HOME-040, name: Desk organiser, unit_price_cents: 4400}
+            - {sku: CLR-020, name: Clearance notebook set, category: final_sale, unit_price_cents: 2800}
+          shipment: {status: in_transit, carrier: UPS, shipped_days_ago: 28, eta_days_from_now: -12}
+  ticket:
+    sender_email: bram@example.com
+    subject: Order never arrived
+    body: "Order {o1} was supposed to arrive almost two weeks ago and tracking has not moved. I want a refund."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 7200, status: processed}
+    policy_refs: ["POL-REF-005@v2"]
+    reply_facts: ["the parcel counts as lost", "full refund of 72.00"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 7200}
+
+- id: HLD-020
+  category: shipping
+  difficulty: easy
+  tags: [late, denial]
+  description: Parcel is two days past its estimate and still moving; no refund yet.
+  world:
+    - alias: c1
+      email: cleo@example.com
+      name: Cleo Marsh
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 10
+          items:
+            - {sku: APP-010, name: Running shoes, unit_price_cents: 8900}
+          shipment: {status: in_transit, carrier: FedEx, shipped_days_ago: 8, eta_days_from_now: -2}
+  ticket:
+    sender_email: cleo@example.com
+    subject: My shoes are late
+    body: "Order {o1} should have been here two days ago. Refund me please, I am done waiting."
+  expected:
+    policy_refs: ["POL-SHP-003@v1", "POL-REF-005@v2"]
+    reply_facts: ["the parcel is late but not lost", "no refund is available yet"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 8900}
+
+- id: HLD-021
+  category: shipping
+  difficulty: medium
+  tags: [returned_to_sender, refund]
+  description: Parcel bounced back to the warehouse after a failed delivery; it is treated as lost.
+  world:
+    - alias: c1
+      email: dov@example.com
+      name: Dov Katz
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 20
+          items:
+            - {sku: TECH-050, name: Mechanical keyboard, unit_price_cents: 11900}
+          shipment: {status: returned, carrier: DHL, shipped_days_ago: 18, eta_days_from_now: -9}
+  ticket:
+    sender_email: dov@example.com
+    subject: Keyboard went back to you?
+    body: "The carrier says order {o1} was returned to sender. I was never told about a failed delivery. I want my money back."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 11900, status: processed}
+    policy_refs: ["POL-REF-005@v2"]
+    reply_facts: ["a returned parcel is refunded in full"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 11900}
+
+- id: HLD-022
+  category: shipping
+  difficulty: medium
+  tags: [damaged, refund]
+  description: A regular item arrived damaged 12 days ago; the standard return window still applies.
+  world:
+    - alias: c1
+      email: elif@example.com
+      name: Elif Aydin
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 17
+          items:
+            - {sku: HOME-050, name: Glass carafe, unit_price_cents: 3600}
+          shipment: {status: delivered, shipped_days_ago: 16, eta_days_from_now: -12, delivered_days_ago: 12}
+  ticket:
+    sender_email: elif@example.com
+    subject: Carafe broken in the box
+    body: "The glass carafe in order {o1} arrived in pieces. I took photos. I would like a refund."
+  expected:
+    diff:
+      orders: {o1: refunded}
+      new_refunds:
+        - {target: o1, amount_cents: 3600, status: processed}
+    policy_refs: ["POL-SHP-005@v1", "POL-REF-001@v2"]
+    reply_facts: ["refund of 36.00 processed"]
+  reference_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 3600}
+
+- id: HLD-023
+  category: shipping
+  difficulty: hard
+  tags: [damaged, final_sale, escalation]
+  description: An engraved gift arrived damaged; personalized goods are final sale and need a human review.
+  world:
+    - alias: c1
+      email: nia@example.com
+      name: Nia Okafor
+      orders:
+        - alias: o1
+          status: delivered
+          placed_days_ago: 9
+          items:
+            - {sku: PER-003, name: Engraved photo frame, category: final_sale, unit_price_cents: 5400}
+          shipment: {status: delivered, shipped_days_ago: 8, eta_days_from_now: -3, delivered_days_ago: 5}
+  ticket:
+    sender_email: nia@example.com
+    subject: Engraved frame cracked
+    body: "The engraved frame from order {o1} was cracked when it arrived. It was a wedding gift. What can you do?"
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SHP-005@v1", "POL-REF-003@v2"]
+    reply_facts: ["a colleague will review the damaged final-sale item"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 5400}
+
+- id: HLD-024
+  category: shipping
+  difficulty: medium
+  tags: [address_change, escalation]
+  description: Customer wants a new delivery address while the label is created and the parcel is not collected.
+  world:
+    - alias: c1
+      email: ruth@example.com
+      name: Ruth Salgado
+      orders:
+        - alias: o1
+          status: placed
+          placed_days_ago: 1
+          items:
+            - {sku: HOME-060, name: Bookshelf lamp, unit_price_cents: 5900}
+          shipment: {status: label_created, carrier: DHL}
+  ticket:
+    sender_email: ruth@example.com
+    subject: Wrong address on my order
+    body: "Order {o1} has my old address. Can you ship it to 14 Harbour Street instead?"
+  expected:
+    requires_human: true
+    policy_refs: ["POL-SHP-004@v2", "POL-ESC-001@v1"]
+    reply_facts: ["passed to the fulfillment team"]
+
+- id: HLD-025
+  category: shipping
+  difficulty: medium
+  tags: [cancellation, denial]
+  description: Customer wants to cancel an order that is already in transit.
+  world:
+    - alias: c1
+      email: otto@example.com
+      name: Otto Brenner
+      orders:
+        - alias: o1
+          status: shipped
+          placed_days_ago: 4
+          items:
+            - {sku: TECH-060, name: Desk monitor arm, unit_price_cents: 7400}
+          shipment: {status: in_transit, carrier: DHL, shipped_days_ago: 2, eta_days_from_now: 2}
+  ticket:
+    sender_email: otto@example.com
+    subject: Cancel order
+    body: "I changed my mind about order {o1}. Please cancel it."
+  expected:
+    policy_refs: ["POL-SHP-004@v2"]
+    reply_facts: ["orders cannot be cancelled after dispatch", "use the returns policy after delivery"]
+  forbidden_actions:
+    - {tool: issue_refund, target: order, alias: o1, amount_cents: 7400}
