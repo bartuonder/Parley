@@ -50,5 +50,20 @@ def recall(session: Session, customer_id: int, limit: int = DEFAULT_RECALL) -> l
     ]
 
 
+def recall_for_ticket(session: Session, customer_id: int, ticket_id: str) -> list[MemoryFact]:
+    """Facts recorded earlier for one ticket, oldest first; a dialogue reruns the same ticket."""
+    stmt = (
+        select(CustomerMemoryRow)
+        .where(
+            CustomerMemoryRow.customer_id == customer_id, CustomerMemoryRow.ticket_id == ticket_id
+        )
+        .order_by(CustomerMemoryRow.id)
+    )
+    return [
+        MemoryFact(kind=r.kind, content=r.content, ticket_id=r.ticket_id, created_at=r.created_at)
+        for r in session.scalars(stmt)
+    ]
+
+
 def render_memory(facts: list[MemoryFact]) -> str:
     return "\n".join(f"- {f.created_at.date()} ({f.ticket_id}): {f.content}" for f in facts)
