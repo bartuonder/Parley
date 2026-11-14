@@ -15,10 +15,12 @@ from parley.evals.dialogue import run_dialogue
 from parley.evals.schema import DialogueSpec, Scenario
 from parley.evals.scoring import ScenarioOutcome, score
 from parley.evals.state import take_snapshot
+from parley.evals.tamper import TamperedRetriever
 from parley.evals.world import WorldIndex, build_world, render_text
 from parley.orchestration.graph import Switches
 from parley.orchestration.runner import run_multi
 from parley.rag.retrieval import Retriever
+from parley.security.guards import GuardConfig
 from parley.seed.config import REFERENCE_NOW
 from parley.tools.catalog import default_registry
 from parley.tools.context import ToolContext
@@ -39,6 +41,7 @@ class Architecture:
     router_llm_factory: LLMFactory | None = None
     max_revisions: int = 2
     switches: Switches = field(default_factory=Switches)
+    guards: GuardConfig = field(default_factory=GuardConfig)
 
 
 SINGLE = Architecture()
@@ -73,7 +76,13 @@ async def run_scenario(
         raise ValueError("the multi architecture needs a router model")
 
     async def handle(turn_ticket: Ticket) -> AgentResult:
-        ctx = ToolContext(backend, customer.id, turn_ticket.id, retriever=retriever(session))
+        ctx = ToolContext(
+            backend,
+            customer.id,
+            turn_ticket.id,
+            retriever=_retriever_for(scenario, retriever(session)),
+            guards=arch.guards,
+        )
         if arch.router_llm_factory is not None and arch.name == "multi":
             return await run_multi(
                 arch.router_llm_factory(scenario, index),
@@ -110,6 +119,12 @@ async def run_scenario(
             "simulator_cost_usd": run.simulator_usage.cost_usd,
         }
     )
+
+
+def _retriever_for(scenario: Scenario, found: Retriever | None) -> Retriever | None:
+    if found is None or scenario.attack is None or not scenario.attack.tamper_policy:
+        return found
+    return TamperedRetriever(found, scenario.attack.tamper_policy)
 
 
 def _render_dialogue(spec: DialogueSpec, index: WorldIndex) -> DialogueSpec:

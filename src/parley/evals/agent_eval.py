@@ -7,7 +7,7 @@ from typing import Any
 
 from parley.agent.llm import LiteLLMClient
 from parley.db.session import session_scope
-from parley.evals.agent_run import SINGLE, Architecture, evaluate
+from parley.evals.agent_run import Architecture, evaluate
 from parley.evals.database import recreate_eval_database
 from parley.evals.judge import judge_outcomes
 from parley.evals.loader import SCENARIO_SETS, load_set
@@ -23,6 +23,7 @@ from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
 from parley.orchestration.graph import Switches
 from parley.rag.service import build_default_index, default_retriever
+from parley.security.guards import parse_guards
 from parley.settings import PROJECT_ROOT, get_settings
 
 DEFAULT_TOTAL_BUDGET_USD = 3.0
@@ -35,8 +36,11 @@ ABLATIONS: dict[str, Switches] = {
 }
 
 
-def default_out(arch: str, scenario_set: str = "core", ablation: str | None = None) -> Path:
+def default_out(
+    arch: str, scenario_set: str = "core", ablation: str | None = None, guards: str = "on"
+) -> Path:
     name = f"agent_{arch}" + (f"_no_{ablation}" if ablation else "")
+    name += "" if guards == "on" else f"_guards_{guards}"
     suffix = "" if scenario_set == "core" else f"_{scenario_set}"
     return PROJECT_ROOT / "reports" / f"{name}{suffix}.json"
 
@@ -100,7 +104,8 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
         raise SystemExit("PARLEY_LLM_API_KEY is not set")
     model = args.model or settings.agent_model
     engine = recreate_eval_database()
-    arch = SINGLE
+    guards = parse_guards(args.guards)
+    arch = Architecture(guards=guards)
     if args.arch == "multi":
         router = LiteLLMClient(model=settings.router_model)
         arch = Architecture(
@@ -108,6 +113,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
             router_llm_factory=lambda scenario, index: router,
             max_revisions=settings.agent_max_revisions,
             switches=ABLATIONS.get(args.ablate or "", Switches()),
+            guards=guards,
         )
     try:
         with session_scope(engine) as session:
@@ -159,6 +165,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--ablate", choices=sorted(ABLATIONS), help="turn one part of the multi-agent graph off"
     )
+    parser.add_argument(
+        "--guards", default="on", help="on, off, or no_<guard> to switch one defense off"
+    )
     parser.add_argument("--judge", action="store_true", help="grade every reply with the LLM judge")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
@@ -166,6 +175,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.ablate and args.arch != "multi":
         parser.error("--ablate applies to the multi-agent graph only")
+    try:
+        parse_guards(args.guards)
+    except ValueError as exc:
+        parser.error(str(exc))
     return args
 
 
@@ -194,12 +207,13 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "simulator_model": settings.simulator_model if args.scenario_set == "dialogue" else None,
         "judge_model": settings.judge_model if args.judge else None,
         "ablation": args.ablate,
+        "guards": args.guards,
         "max_steps": settings.agent_max_steps,
         "max_cost_usd": settings.agent_max_cost_usd,
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
         "total_budget_usd": args.budget,
     }
-    out = args.out or default_out(args.arch, args.scenario_set, args.ablate)
+    out = args.out or default_out(args.arch, args.scenario_set, args.ablate, args.guards)
     report = build_report(flat, model, limits, runs)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", "utf-8")
