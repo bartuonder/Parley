@@ -5,6 +5,7 @@ from parley.evals.agent_eval import (
     build_report,
     default_out,
     is_complete,
+    needs_simulator,
     select_scenarios,
 )
 from parley.evals.loader import SCENARIO_SETS, load_scenarios, load_set
@@ -84,3 +85,10 @@ def test_attacks_can_be_selected_by_split() -> None:
     assert len(dev) == 24 and len(test) == 12
     assert {s.id for s in dev}.isdisjoint({s.id for s in test})
     assert select_scenarios(SCENARIOS, [], None, None, "dev") == []
+
+
+def test_the_simulator_is_needed_whenever_a_selected_scenario_is_a_dialogue() -> None:
+    assert not needs_simulator(SCENARIOS)
+    assert needs_simulator(load_set("dialogue"))
+    assert needs_simulator(load_set("redteam"))
+    assert not needs_simulator(select_scenarios(load_set("redteam"), ["ATK-001"], None, None))
