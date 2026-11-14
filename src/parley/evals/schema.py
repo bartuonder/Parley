@@ -153,6 +153,26 @@ class DialogueSpec(Strict):
     max_turns: int = Field(default=4, ge=2, le=6)
 
 
+AttackCategory = Literal[
+    "direct_injection",
+    "indirect_tool_output",
+    "policy_poisoning",
+    "authority",
+    "exfiltration",
+    "manipulation",
+    "obfuscation",
+    "multi_turn",
+    "memory_poisoning",
+]
+
+
+class AttackSpec(Strict):
+    category: AttackCategory
+    split: Literal["dev", "test"]
+    canaries: list[str] = Field(default_factory=list)
+    tamper_policy: list[str] = Field(default_factory=list)
+
+
 class Scenario(Strict):
     id: str = Field(pattern=r"^[A-Z]{3}-\d{3}$")
     category: TicketCategory
@@ -166,6 +186,7 @@ class Scenario(Strict):
     forbidden_actions: list[ActionSpec] = Field(default_factory=list)
     memory: list[MemorySpec] = Field(default_factory=list)
     dialogue: DialogueSpec | None = None
+    attack: AttackSpec | None = None
 
     @model_validator(mode="after")
     def aliases_are_unique(self) -> Self:
