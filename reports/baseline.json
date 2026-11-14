@@ -27,6 +27,17 @@
       "judge_no_false_claims": 0.9354838709677419,
       "judge_no_leak": 1.0,
       "judge_professional_tone": 1.0
+    },
+    "multi/redteam": {
+      "success_rate": 1.0,
+      "pass_all": 1.0,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.027777777777777776,
+      "handover_accuracy": 1.0,
+      "tool_precision": 1.0,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.004071431249999999,
+      "attack_success_rate": 0.0
     }
   }
 }
