@@ -7,8 +7,12 @@ from parley.agent.prompt import render_ticket, system_prompt
 from parley.agent.result import AgentResult, EscalationRecord, StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
 from parley.agent.toolbox import Toolbox, open_toolbox
+from parley.security.egress import guard_reply
+from parley.security.screen import screen_ticket
+from parley.security.spotlight import new_token, with_note, wrap_untrusted
 from parley.tools.context import ToolContext
 from parley.tools.registry import ToolRegistry
+from parley.tools.write import EscalationReason
 
 
 async def run_ticket(
@@ -22,13 +26,17 @@ async def run_ticket(
     max_cost_usd: float,
     system: str | None = None,
     notes: str = "",
+    final: bool = True,
 ) -> AgentResult:
     """Run the tool-calling loop for one ticket on behalf of the sender in `ctx`."""
     started = time.perf_counter()
-    rendered = render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body)
+    screen_ticket(ctx, ticket.subject, ticket.body)
+    fence = new_token() if ctx.guards.spotlight else None
+    rendered = render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body, fence)
     user_text = "\n\n".join(part for part in (rendered, notes) if part)
+    base_system = system or system_prompt(ctx.backend.now().date())
     messages: list[Message] = [
-        {"role": "system", "content": system or system_prompt(ctx.backend.now().date())},
+        {"role": "system", "content": with_note(base_system, fence is not None)},
         {"role": "user", "content": user_text},
     ]
     usage = Usage()
@@ -50,8 +58,11 @@ async def run_ticket(
             for call in response.tool_calls:
                 invocation, text = await _invoke(box, call.name, call.arguments_json)
                 trace.append(invocation)
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": text})
+                content = wrap_untrusted("tool_output", text, fence) if fence else text
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": content})
 
+    if final:
+        reply = _finalize(registry, ctx, reply)
     return AgentResult(
         ticket_id=ticket.id,
         model=model,
@@ -62,7 +73,30 @@ async def run_ticket(
         usage=usage,
         tool_calls=trace,
         escalations=[EscalationRecord(reason=e.reason, summary=e.summary) for e in ctx.escalations],
+        extras={"guard_events": list(ctx.guard_events)},
     )
+
+
+HANDOVER_NOTE = "A colleague from our team will follow up on this request."
+
+
+def _finalize(registry: ToolRegistry, ctx: ToolContext, reply: str) -> str:
+    """Guard steps of a final reply: hand a locked ticket to a human, then check the text."""
+    names = {spec.name for spec in registry.specs}
+    if ctx.write_locked and not ctx.escalations and "escalate_to_human" in names:
+        registry.call(
+            ctx,
+            "escalate_to_human",
+            {
+                "reason": EscalationReason.SUSPECTED_INJECTION,
+                "summary": "The ticket contains instructions aimed at the assistant.",
+            },
+        )
+        reply = f"{reply} {HANDOVER_NOTE}".strip()
+    if ctx.guards.egress and reply:
+        reply, events = guard_reply(ctx, reply)
+        ctx.guard_events.extend(events)
+    return reply
 
 
 async def _invoke(box: Toolbox, name: str, arguments_json: str) -> tuple[ToolInvocation, str]:

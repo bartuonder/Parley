@@ -6,6 +6,7 @@ from parley.agent.ticket import Ticket
 from parley.memory.store import MemoryFact
 from parley.orchestration.claims import Claim, unbacked_claims
 from parley.orchestration.executor import ExecutedAction
+from parley.security.spotlight import new_token, with_note
 from parley.tools.proposals import CANCEL, ESCALATE, REFUND
 
 RESPONDER_PROMPT = """\
@@ -95,16 +96,18 @@ async def respond(
     actions: list[ExecutedAction],
     rewrite: bool = True,
     earlier: list[MemoryFact] | None = None,
+    fence: bool = False,
 ) -> FinalReply:
+    token = new_token() if fence else None
     earlier_lines = "".join(
         f"\n- Done earlier in this conversation: {f.content}." for f in earlier or []
     )
     content = (
-        f"{render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body)}\n\n"
+        f"{render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body, token)}\n\n"
         f"FACTS:\n{render_facts(actions)}{earlier_lines}\n\nSpecialist draft:\n{draft or '(none)'}"
     )
     messages: list[Message] = [
-        {"role": "system", "content": RESPONDER_PROMPT},
+        {"role": "system", "content": with_note(RESPONDER_PROMPT, fence)},
         {"role": "user", "content": content},
     ]
     response = await llm.complete(messages, [])

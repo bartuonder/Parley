@@ -18,6 +18,7 @@ from parley.orchestration.executor import ExecutedAction, execute_proposals
 from parley.orchestration.responder import money, respond
 from parley.orchestration.router import Specialist, route_ticket
 from parley.orchestration.specialists import specialist_prompt, specialist_registry
+from parley.security.egress import guard_reply
 from parley.tools.context import Proposal, ToolContext
 from parley.tools.proposals import ESCALATE
 from parley.tools.registry import ToolRegistry
@@ -86,7 +87,9 @@ async def triage(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     deps = _deps(config)
     if not deps.switches.route:
         return {"specialist": Specialist.BILLING.value, "route_raw": "fixed"}
-    decision = await route_ticket(deps.router_llm, Ticket.model_validate(state["ticket"]))
+    decision = await route_ticket(
+        deps.router_llm, Ticket.model_validate(state["ticket"]), fence=deps.ctx.guards.spotlight
+    )
     return {
         "specialist": decision.specialist.value,
         "route_raw": decision.raw,
@@ -110,6 +113,7 @@ async def investigate(state: GraphState, config: RunnableConfig) -> dict[str, An
         max_cost_usd=deps.max_cost_usd,
         system=specialist_prompt(specialist, ctx.backend.now().date(), memory),
         notes=state.get("feedback", ""),
+        final=False,
     )
     proposals = [{"kind": p.kind, "arguments": p.arguments} for p in ctx.proposals]
     update: dict[str, Any] = {
@@ -122,11 +126,14 @@ async def investigate(state: GraphState, config: RunnableConfig) -> dict[str, An
     }
     if result.stop_reason != StopReason.REPLY:
         update["proposals"] = [_handover("The specialist did not finish within its limits.")]
+    elif ctx.write_locked and not any(p["kind"] == ESCALATE for p in proposals):
+        note = "The ticket contains instructions aimed at the assistant."
+        update["proposals"] = [*proposals, _handover(note, "suspected_injection")]
     return update
 
 
-def _handover(summary: str) -> dict[str, Any]:
-    return {"kind": ESCALATE, "arguments": {"reason": "other", "summary": summary}}
+def _handover(summary: str, reason: str = "other") -> dict[str, Any]:
+    return {"kind": ESCALATE, "arguments": {"reason": reason, "summary": summary}}
 
 
 async def critic(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
@@ -140,6 +147,9 @@ async def critic(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         _proposals(state),
         state.get("draft", ""),
         calls,
+        fence=deps.ctx.guards.spotlight,
+        injection_check=deps.ctx.guards.critic,
+        guard_notes="; ".join(deps.ctx.guard_events),
     )
     update: dict[str, Any] = {
         "verdict": verdict.model_dump(exclude={"usage"}),
@@ -187,7 +197,12 @@ async def respond_node(state: GraphState, config: RunnableConfig) -> dict[str, A
         earlier=recall_for_ticket(
             deps.ctx.backend.session, deps.ctx.customer_id, state["ticket"]["id"]
         ),
+        fence=deps.ctx.guards.spotlight,
     )
+    if deps.ctx.guards.egress and final.text:
+        text, events = guard_reply(deps.ctx, final.text)
+        deps.ctx.guard_events.extend(events)
+        final = final.model_copy(update={"text": text})
     return {"reply": final.text, "unbacked": final.unbacked, "usage": _usage(state, final.usage)}
 
 

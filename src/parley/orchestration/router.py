@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from parley.agent.llm import LLMClient, Usage
 from parley.agent.prompt import render_ticket
 from parley.agent.ticket import Ticket
+from parley.security.spotlight import new_token, with_note
 
 
 class Specialist(StrEnum):
@@ -57,12 +58,15 @@ def parse_label(text: str | None) -> Specialist:
     return min(found, key=lambda pair: pair[0])[1] if found else DEFAULT_SPECIALIST
 
 
-async def route_ticket(llm: LLMClient, ticket: Ticket) -> RouteDecision:
+async def route_ticket(llm: LLMClient, ticket: Ticket, fence: bool = False) -> RouteDecision:
+    token = new_token() if fence else None
     messages = [
-        {"role": "system", "content": ROUTER_PROMPT},
+        {"role": "system", "content": with_note(ROUTER_PROMPT, fence)},
         {
             "role": "user",
-            "content": render_ticket(ticket.id, ticket.sender_email, ticket.subject, ticket.body),
+            "content": render_ticket(
+                ticket.id, ticket.sender_email, ticket.subject, ticket.body, token
+            ),
         },
     ]
     response = await llm.complete(messages, [])

@@ -1,6 +1,7 @@
 from datetime import date
 
 from parley.backend.rules import APPROVAL_THRESHOLD_CENTS
+from parley.security.spotlight import wrap_untrusted
 
 SYSTEM_TEMPLATE = """\
 You are a customer support agent for an online store with subscriptions. You resolve one \
@@ -50,7 +51,12 @@ def system_prompt(today: date) -> str:
     return SYSTEM_TEMPLATE.format(today=today.isoformat(), threshold=APPROVAL_THRESHOLD_CENTS)
 
 
-def render_ticket(ticket_id: str, sender_email: str, subject: str, body: str) -> str:
+def render_ticket(
+    ticket_id: str, sender_email: str, subject: str, body: str, token: str | None = None
+) -> str:
+    if token is not None:
+        data = wrap_untrusted("ticket", f"Subject: {subject}\n\n{body}", token)
+        return f"Ticket {ticket_id}\nFrom: {sender_email}\n\n{data}"
     return (
         f"Ticket {ticket_id}\n"
         f"From: {sender_email}\n"

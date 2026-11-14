@@ -133,6 +133,7 @@ def to_result(
             "awaiting_approval": "__interrupt__" in state,
             "followup": state.get("followup", ""),
             "critic_source": state.get("verdict", {}).get("source"),
+            "guard_events": list(ctx.guard_events),
             "unbacked_after_rewrite": state.get("unbacked", []),
         },
     )
