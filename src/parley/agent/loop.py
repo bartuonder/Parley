@@ -8,7 +8,7 @@ from parley.agent.result import AgentResult, EscalationRecord, StopReason, ToolI
 from parley.agent.ticket import Ticket
 from parley.agent.toolbox import Toolbox, open_toolbox
 from parley.security.egress import guard_reply
-from parley.security.screen import screen_ticket
+from parley.security.screen import screen_ticket, screen_tool_output
 from parley.security.spotlight import new_token, with_note, wrap_untrusted
 from parley.tools.context import ToolContext
 from parley.tools.registry import ToolRegistry
@@ -58,6 +58,7 @@ async def run_ticket(
             for call in response.tool_calls:
                 invocation, text = await _invoke(box, call.name, call.arguments_json)
                 trace.append(invocation)
+                screen_tool_output(ctx, call.name, text)
                 content = wrap_untrusted("tool_output", text, fence) if fence else text
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": content})
 
