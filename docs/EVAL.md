@@ -86,7 +86,7 @@ The 8.6-point gap between core and held-out in the first run is the measurable c
 
 HLD-027 and HLD-028 were found or reworded after their first failure, and the DLG-002 and DLG-013 fixes were tuned on the dialogue set itself, so those four scenarios no longer count as unseen.
 
-The last fix (insistence) came after the full suite. `make eval-gate` on that code, three runs, passed against the earlier baseline and was accepted as the new one (`reports/gate_run`, `reports/eval_gate.md`). **That run used a prompt in which the insistence sentence was accidentally repeated three times; it was reduced to one sentence afterwards (commit `6346883`) and the repeat of the gate run on the final prompt stopped because the API account ran out of credits. Run `make eval-gate` once after adding credits; if it fails only on handover or noise, accept it with `--update-baseline`.**
+The last fix (insistence) came after the full suite. `make eval-gate` on that code, three runs, passed against the earlier baseline and was accepted as the new one (`reports/gate_run`, `reports/eval_gate.md`). That run used a prompt in which the insistence sentence was accidentally repeated three times. After the sentence was reduced to one (commit `6346883`), the gate was run again on the final prompt and passed: core 98.8% success and 96.4% `pass^3`, held-out 98.9% and 96.8%, handover correct 93.9% and 94.6%. That run is the accepted baseline.
 
 | Scope | Task success | `pass^3` | Handover correct | Cost per ticket |
 | --- | --- | --- | --- | --- |
