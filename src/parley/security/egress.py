@@ -7,10 +7,7 @@ from parley.security.redact import redact
 from parley.security.scan import TOOL_NAMES
 from parley.tools.context import ToolContext
 
-FALLBACK_REPLY = (
-    "I cannot share that. I can help with your own orders, invoices and subscriptions, and a "
-    "colleague can follow up if you need more."
-)
+FALLBACK_REPLY = "I cannot share that. I can help with your own orders, invoices and subscriptions."
 
 PROMPT_MARKERS = re.compile(
     rf"you are a (?:customer support agent|\w+ specialist)|<<\s*(?:DATA|END)\b|<ticket_body>|"
