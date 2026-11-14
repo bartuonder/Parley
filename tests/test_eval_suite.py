@@ -7,14 +7,18 @@ from parley.evals.agent_eval import build_report
 from parley.evals.gate import check
 from parley.evals.suite import (
     Step,
+    attack_breakdown,
     collect_metrics,
     full_plan,
     gate_plan,
+    render_security_report,
     render_suite_report,
     report_cost,
     run_suite,
+    security_plan,
     step_args,
 )
+from parley.security.guards import GUARD_NAMES
 from tests.test_eval_report import outcome
 
 
@@ -29,24 +33,42 @@ def make_report(arch: str = "multi", ablation: str | None = None, **update: Any)
 def test_the_full_plan_covers_every_set_for_both_architectures_and_each_ablation() -> None:
     plan = full_plan(repeats=4, ablation_repeats=2)
     scopes = [s.scope for s in plan]
-    assert scopes[:6] == [
+    assert scopes[:8] == [
         "single/core",
         "multi/core",
         "single/heldout",
         "multi/heldout",
         "single/dialogue",
         "multi/dialogue",
+        "single/redteam",
+        "multi/redteam",
     ]
     assert "multi-no_critic/core" in scopes and "multi-no_router/heldout" in scopes
-    assert len(plan) == 12 and len(set(scopes)) == 12
-    assert all(s.repeats == 4 and s.judge for s in plan[:6])
-    assert all(s.repeats == 2 and not s.judge for s in plan[6:])
+    assert len(plan) == 14 and len(set(scopes)) == 14
+    assert all(s.repeats == 4 for s in plan[:8])
+    assert all(s.judge for s in plan[:6]) and not any(s.judge for s in plan[6:])
+    assert all(s.repeats == 2 for s in plan[8:])
 
 
-def test_the_gate_plan_runs_only_the_multi_agent_sets_with_the_judge() -> None:
+def test_the_gate_plan_runs_the_multi_agent_sets_and_the_red_team_set() -> None:
     plan = gate_plan(3)
-    assert [s.scope for s in plan] == ["multi/core", "multi/heldout"]
-    assert all(s.judge and s.repeats == 3 for s in plan)
+    assert [s.scope for s in plan] == ["multi/core", "multi/heldout", "multi/redteam"]
+    assert [s.judge for s in plan] == [True, True, False]
+    assert all(s.repeats == 3 for s in plan)
+
+
+def test_the_security_plan_compares_guards_off_and_on_then_switches_each_guard_off() -> None:
+    plan = security_plan(repeats=3, ablation_repeats=1)
+    scopes = [s.scope for s in plan]
+    assert scopes[:4] == [
+        "single-guards_off/redteam",
+        "multi-guards_off/redteam",
+        "single/redteam",
+        "multi/redteam",
+    ]
+    assert scopes[4:] == [f"multi-guards_no_{name}/redteam" for name in GUARD_NAMES]
+    assert all(s.repeats == 3 for s in plan[:4]) and all(s.repeats == 1 for s in plan[4:])
+    assert not any(s.judge for s in plan)
 
 
 def test_a_step_becomes_eval_command_arguments() -> None:
@@ -106,3 +128,38 @@ def test_a_suite_stops_when_its_budget_is_used_up(monkeypatch: pytest.MonkeyPatc
     assert calls == pytest.approx([1.0, 0.4])
     reports, spent = run_suite(plan[:1], budget=1.0)
     assert list(reports) == ["multi/core"] and spent == pytest.approx(0.6)
+
+
+def attack_report(success: list[bool], arch: str = "multi", guards: str = "on") -> dict[str, Any]:
+    attacks = [
+        outcome(f"A{i}").model_copy(
+            update={
+                "attack_success": hit,
+                "attack_category": "direct_injection" if i % 2 == 0 else "exfiltration",
+                "attack_split": "dev" if i < 2 else "test",
+                "guard_events": ["injection:mode_switch"] if hit is False else [],
+            }
+        )
+        for i, hit in enumerate(success)
+    ]
+    meta = {"arch": arch, "repeats": 1, "guards": guards}
+    return build_report(attacks, "agent-model", meta)
+
+
+def test_the_security_report_shows_asr_before_and_after_by_split_category_and_guard() -> None:
+    reports = {
+        "multi-guards_off/redteam": attack_report([True, True, True, False], guards="off"),
+        "multi/redteam": attack_report([False, False, True, False]),
+        "multi-guards_no_scan/redteam": attack_report([False, True, True, False]),
+    }
+    text = render_security_report(reports, cost_usd=1.5)
+    assert "Cost of this run: $1.50" in text
+    assert "| multi | off | 100.0% | 50.0% | 75.0% |" in text
+    assert "| multi | on | 0.0% | 50.0% | 25.0% |" in text
+    assert "| direct injection | 2 | 2/2 (100%) | 1/2 (50%) |" in text
+    assert "| scan | 50.0% | 50.0% | 50.0% |" in text and "| none (all on) |" in text
+
+
+def test_the_attack_breakdown_counts_attacks_and_successes_per_category() -> None:
+    breakdown = attack_breakdown(attack_report([True, False, True, True]))
+    assert breakdown == {"direct_injection": (2, 2), "exfiltration": (2, 1)}

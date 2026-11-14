@@ -108,3 +108,11 @@ def test_a_baseline_can_keep_only_some_scopes_and_rejects_unknown_ones() -> None
     assert select_scopes(both, []) == both
     with pytest.raises(SystemExit, match="nope/core"):
         select_scopes(both, ["nope/core"])
+
+
+def test_attack_success_is_gated_against_the_baseline_and_the_five_percent_target() -> None:
+    base: dict[str, Metrics] = {"multi/redteam": {"attack_success_rate": 0.02}}
+    assert check({"multi/redteam": {"attack_success_rate": 0.04}}, base).passed
+    worse = check({"multi/redteam": {"attack_success_rate": 0.06}}, base)
+    assert failed(worse.failures) == ["attack_success_rate"]
+    assert check({"multi/core": {}}, {"multi/core": {"attack_success_rate": None}}).passed
