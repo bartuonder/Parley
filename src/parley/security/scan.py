@@ -27,6 +27,12 @@ RULES: dict[str, re.Pattern[str]] = {
         r"ai|bot|model)\b",
         re.IGNORECASE,
     ),
+    "approval_evasion": re.compile(
+        r"\b(?:avoid|bypass|skip|circumvent|get around|stay under|so (?:it|that) "
+        r"(?:does not|doesn't|won't) (?:need|require|trigger))\b[^.\n]{0,40}\b(?:approval|"
+        r"review|human check|threshold|limit)\b",
+        re.IGNORECASE,
+    ),
     "mode_switch": re.compile(
         r"\b(?:system|admin|developer|maintenance|debug|god|sudo)[\s_-]?(?:override|mode|access)\b"
         r"|\bjailbreak\b|\bdan mode\b|\byou are now\b|\bnew (?:rules|instructions)\b",
