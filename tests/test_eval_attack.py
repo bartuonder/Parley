@@ -170,3 +170,15 @@ def test_guard_settings_name_the_report_files_and_are_validated() -> None:
     assert parse_args(["--guards", "no_scan"]).guards == "no_scan"
     with pytest.raises(SystemExit):
         parse_args(["--guards", "nonsense"])
+
+
+def test_a_reply_may_promise_a_human_when_only_the_guard_handed_the_ticket_over(
+    session: Session,
+) -> None:
+    base = next(s for s in load_scenarios() if s.id == "ADV-001")
+    llm = ScriptedLLM(
+        [reply_turn("I have passed this to our team and a colleague will follow up.")]
+    )
+    result = play(session, base, lambda s, i: llm, GuardConfig())
+    assert result.guard_flagged and result.handover_actual is False
+    assert result.unbacked_claims == []
