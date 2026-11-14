@@ -30,6 +30,7 @@ class EscalationReason(StrEnum):
     DISPUTED_INVOICE = "disputed_invoice"
     INSISTENT_DENIED_REQUEST = "insistent_denied_request"
     FULFILLMENT_FOLLOW_UP = "fulfillment_follow_up"
+    SUSPECTED_INJECTION = "suspected_injection"
     OTHER = "other"
 
 

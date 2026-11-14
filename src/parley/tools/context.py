@@ -3,6 +3,7 @@ from typing import Any
 
 from parley.backend.services import Backend
 from parley.rag.retrieval import Retriever
+from parley.security.guards import GuardConfig
 from parley.tools.permissions import ALL_PERMISSIONS, Permission
 
 
@@ -31,3 +32,6 @@ class ToolContext:
     escalations: list[Escalation] = field(default_factory=list)
     retriever: Retriever | None = None
     proposals: list[Proposal] = field(default_factory=list)
+    guards: GuardConfig = field(default_factory=GuardConfig.off)
+    write_locked: bool = False
+    guard_events: list[str] = field(default_factory=list)

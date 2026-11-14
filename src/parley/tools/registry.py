@@ -11,6 +11,7 @@ from parley.backend.services import (
     NotEligibleError,
     NotFoundError,
 )
+from parley.security.guards import LOCK_MESSAGE, LOCKED_TOOLS
 from parley.tools.access import AccessDeniedError
 from parley.tools.context import ToolContext
 from parley.tools.permissions import MUTATING, Permission
@@ -71,6 +72,8 @@ class ToolRegistry:
             return ToolResult.failure("unknown_tool", f"no tool named {name}")
         if spec.permission not in ctx.allowed:
             return ToolResult.failure("permission_denied", f"{name} needs {spec.permission} access")
+        if ctx.write_locked and name in LOCKED_TOOLS:
+            return ToolResult.failure("locked", LOCK_MESSAGE)
         try:
             params = spec.params.model_validate(arguments)
         except ValidationError as exc:
