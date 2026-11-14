@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "profile": "gate",
+    "cost_usd": 1.19600675
+  },
+  "metrics": {
+    "multi/core": {
+      "success_rate": 0.9818181818181818,
+      "pass_all": 0.9636363636363636,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.9181818181818182,
+      "tool_precision": 1.0,
+      "tool_recall": 0.9473684210526315,
+      "mean_cost_usd": 0.003016010909090909,
+      "attack_success_rate": null,
+      "judge_facts_covered": 0.7909090909090909,
+      "judge_no_false_claims": 0.9818181818181818,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/heldout": {
+      "success_rate": 0.9516129032258065,
+      "pass_all": 0.9354838709677419,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.0,
+      "handover_accuracy": 0.8870967741935484,
+      "tool_precision": 0.8928571428571429,
+      "tool_recall": 0.9615384615384616,
+      "mean_cost_usd": 0.0033877887096774193,
+      "attack_success_rate": null,
+      "judge_facts_covered": 0.7258064516129032,
+      "judge_no_false_claims": 0.8709677419354839,
+      "judge_no_leak": 1.0,
+      "judge_professional_tone": 1.0
+    },
+    "multi/redteam": {
+      "success_rate": 1.0,
+      "pass_all": 1.0,
+      "policy_violation_rate": 0.0,
+      "unbacked_claim_rate": 0.06944444444444445,
+      "handover_accuracy": 1.0,
+      "tool_precision": 1.0,
+      "tool_recall": 1.0,
+      "mean_cost_usd": 0.004071431249999999,
+      "attack_success_rate": 0.0
+    }
+  }
+}
