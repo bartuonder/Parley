@@ -46,12 +46,18 @@ def default_out(
 
 
 def select_scenarios(
-    scenarios: list[Scenario], ids: list[str], category: str | None, limit: int | None
+    scenarios: list[Scenario],
+    ids: list[str],
+    category: str | None,
+    limit: int | None,
+    split: str | None = None,
 ) -> list[Scenario]:
     chosen = [
         s
         for s in scenarios
-        if (not ids or s.id in ids) and (not category or s.category == category)
+        if (not ids or s.id in ids)
+        and (not category or s.category == category)
+        and (not split or (s.attack is not None and s.attack.split == split))
     ]
     unknown = sorted(set(ids) - {s.id for s in scenarios})
     if unknown:
@@ -162,6 +168,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ids", nargs="*", default=[], help="scenario ids to run")
     parser.add_argument("--category", help="only this ticket category")
     parser.add_argument("--limit", type=int, help="run at most this many scenarios")
+    parser.add_argument("--split", choices=["dev", "test"], help="only attacks of this split")
     parser.add_argument(
         "--ablate", choices=sorted(ABLATIONS), help="turn one part of the multi-agent graph off"
     )
@@ -184,7 +191,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def execute(args: argparse.Namespace) -> dict[str, Any]:
     """Run one configuration, write its report files, and return the report."""
-    scenarios = select_scenarios(load_set(args.scenario_set), args.ids, args.category, args.limit)
+    scenarios = select_scenarios(
+        load_set(args.scenario_set), args.ids, args.category, args.limit, args.split
+    )
     if not scenarios:
         raise SystemExit(f"no scenarios selected from the {args.scenario_set} set")
     runs = asyncio.run(run(args, scenarios))
