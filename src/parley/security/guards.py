@@ -20,6 +20,7 @@ class GuardConfig:
     redact_records: bool = True
     policy_integrity: bool = True
     critic: bool = True
+    limits: bool = True
 
     @classmethod
     def off(cls) -> "GuardConfig":

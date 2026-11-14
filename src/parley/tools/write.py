@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from parley.backend.schemas import RefundOut, SubscriptionOut
 from parley.backend.services import RefundTarget
 from parley.db.enums import RefundStatus
+from parley.security.limits import check_split
 from parley.tools.access import own_invoice, own_order, own_subscription
 from parley.tools.context import Escalation, ToolContext
 from parley.tools.permissions import Permission
@@ -61,6 +62,8 @@ def issue_refund(ctx: ToolContext, params: IssueRefundParams) -> RefundResult:
         own_order(ctx, params.target_id)
     else:
         own_invoice(ctx, params.target_id)
+    key = (params.target.value, params.target_id)
+    check_split(ctx, ctx.refund_totals.get(key, 0), params.amount_cents)
     refund, created = ctx.backend.issue_refund(
         params.target,
         params.target_id,
@@ -68,6 +71,8 @@ def issue_refund(ctx: ToolContext, params: IssueRefundParams) -> RefundResult:
         ctx.clean(params.reason),
         refund_key(ctx, params),
     )
+    if created:
+        ctx.refund_totals[key] = ctx.refund_totals.get(key, 0) + params.amount_cents
     base = RefundOut.model_validate(refund)
     return RefundResult(
         **base.model_dump(),

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from parley.backend.rules import requires_approval
 from parley.backend.services import InvalidRequestError, NotEligibleError, RefundTarget
 from parley.db.enums import SubscriptionStatus
+from parley.security.limits import check_split
 from parley.tools.access import own_invoice, own_order, own_subscription
 from parley.tools.context import Proposal, ToolContext
 from parley.tools.permissions import Permission
@@ -44,6 +45,16 @@ def propose_refund(ctx: ToolContext, params: IssueRefundParams) -> Recorded:
         raise InvalidRequestError(
             f"amount exceeds refundable maximum of {eligibility.max_refund_cents}"
         )
+    arguments = params.model_dump(mode="json")
+    if Proposal(REFUND, arguments) not in ctx.proposals:
+        prior = sum(
+            int(p.arguments["amount_cents"])
+            for p in ctx.proposals
+            if p.kind == REFUND
+            and p.arguments["target"] == arguments["target"]
+            and p.arguments["target_id"] == params.target_id
+        )
+        check_split(ctx, prior, params.amount_cents)
     return _record(
         ctx,
         REFUND,

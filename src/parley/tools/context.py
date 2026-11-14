@@ -36,6 +36,7 @@ class ToolContext:
     guards: GuardConfig = field(default_factory=GuardConfig.off)
     write_locked: bool = False
     guard_events: list[str] = field(default_factory=list)
+    refund_totals: dict[tuple[str, int], int] = field(default_factory=dict)
 
     def clean(self, text: str) -> str:
         """Mask other people's personal data before text is stored in a record."""
