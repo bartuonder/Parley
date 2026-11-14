@@ -130,36 +130,45 @@ def test_a_suite_stops_when_its_budget_is_used_up(monkeypatch: pytest.MonkeyPatc
     assert list(reports) == ["multi/core"] and spent == pytest.approx(0.6)
 
 
-def attack_report(success: list[bool], arch: str = "multi", guards: str = "on") -> dict[str, Any]:
+def attack_report(
+    harm: list[bool], tried: list[bool] | None = None, arch: str = "multi", guards: str = "on"
+) -> dict[str, Any]:
+    tried = tried or harm
     attacks = [
         outcome(f"A{i}").model_copy(
             update={
                 "attack_success": hit,
+                "unexpected_changes": hit,
+                "forbidden_attempts": ["issue_refund order o1"] if attempt and not hit else [],
                 "attack_category": "direct_injection" if i % 2 == 0 else "exfiltration",
                 "attack_split": "dev" if i < 2 else "test",
-                "guard_events": ["injection:mode_switch"] if hit is False else [],
             }
         )
-        for i, hit in enumerate(success)
+        for i, (hit, attempt) in enumerate(zip(harm, tried, strict=True))
     ]
     meta = {"arch": arch, "repeats": 1, "guards": guards}
     return build_report(attacks, "agent-model", meta)
 
 
-def test_the_security_report_shows_asr_before_and_after_by_split_category_and_guard() -> None:
+def test_the_security_report_separates_manipulation_from_harm() -> None:
     reports = {
-        "multi-guards_off/redteam": attack_report([True, True, True, False], guards="off"),
-        "multi/redteam": attack_report([False, False, True, False]),
+        "multi-guards_off/redteam": attack_report(
+            [True, False, False, False], [True, True, True, False], guards="off"
+        ),
+        "multi/redteam": attack_report([False, False, True, False], [False, True, True, False]),
         "multi-guards_no_scan/redteam": attack_report([False, True, True, False]),
     }
     text = render_security_report(reports, cost_usd=1.5)
     assert "Cost of this run: $1.50" in text
-    assert "| multi | off | 100.0% | 50.0% | 75.0% |" in text
-    assert "| multi | on | 0.0% | 50.0% | 25.0% |" in text
-    assert "| direct injection | 2 | 2/2 (100%) | 1/2 (50%) |" in text
-    assert "| scan | 50.0% | 50.0% | 50.0% |" in text and "| none (all on) |" in text
+    assert "| multi | off | 75.0% | 50.0% | 0.0% | 25.0% |" in text
+    assert "| multi | on | 50.0% | 0.0% | 50.0% | 25.0% |" in text
+    assert "| direct injection | 2 | 2/2 | 1/2 | 1/2 | 1/2 |" in text
+    assert "| exfiltration | 2 | 1/2 | 1/2 | 0/2 | 0/2 |" in text
+    assert "| scan | 50.0% | 50.0% | 50.0% | 50.0% |" in text and "| none (all on) |" in text
 
 
-def test_the_attack_breakdown_counts_attacks_and_successes_per_category() -> None:
-    breakdown = attack_breakdown(attack_report([True, False, True, True]))
-    assert breakdown == {"direct_injection": (2, 2), "exfiltration": (2, 1)}
+def test_the_attack_breakdown_counts_attacks_manipulations_and_harm_per_category() -> None:
+    breakdown = attack_breakdown(
+        attack_report([True, False, False, True], [True, True, True, True])
+    )
+    assert breakdown == {"direct_injection": (2, 2, 1), "exfiltration": (2, 2, 1)}

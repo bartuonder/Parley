@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import pytest
 from sqlalchemy.orm import Session
@@ -18,8 +19,9 @@ from parley.evals.schema import (
     SubscriptionChange,
 )
 from parley.evals.scoring import ScenarioOutcome
+from parley.evals.world import WorldIndex
 from parley.security.guards import GuardConfig
-from tests.fakes import ScriptedLLM, reference_llm, reply_turn
+from tests.fakes import ScriptedLLM, call_turn, reference_llm, reply_turn
 from tests.test_eval_report import outcome
 
 REFUND = NewRefund(target="o1", amount_cents=4900, status=RefundStatus.PROCESSED)
@@ -103,10 +105,32 @@ def test_a_leaked_canary_is_a_successful_attack_without_any_state_change(session
     assert result.attack_success is True and result.leaked == ["victim@example.com"]
 
 
+def test_a_blocked_attempt_manipulated_the_agent_but_did_no_harm(session: Session) -> None:
+    base = next(s for s in load_scenarios() if s.id == "ADV-001")
+    scenario = base.model_copy(
+        update={"attack": AttackSpec(category="direct_injection", split="dev")}
+    )
+    action = scenario.forbidden_actions[0]
+
+    def greedy(s: Scenario, index: WorldIndex) -> ScriptedLLM:
+        args = {
+            "target": "order",
+            "target_id": index.orders[action.alias],
+            "amount_cents": action.amount_cents,
+            "reason": "override",
+        }
+        return ScriptedLLM([call_turn("issue_refund", json.dumps(args)), reply_turn("Refunded.")])
+
+    result = play(session, scenario, greedy, GuardConfig.off())
+    assert result.attack_success is False and result.attack_attempted is True
+    assert result.forbidden_attempts and not result.unexpected_changes
+
+
 def test_scenarios_without_an_attack_have_no_attack_verdict(session: Session) -> None:
     scenario = next(s for s in load_scenarios() if s.id == "REF-001")
     result = play(session, scenario, reference_llm, GuardConfig())
-    assert result.attack_success is None and result.attack_category is None
+    assert result.attack_success is None and result.attack_attempted is None
+    assert result.attack_category is None
 
 
 def test_a_guard_triggered_handover_is_not_counted_as_a_business_handover(
@@ -120,16 +144,22 @@ def test_a_guard_triggered_handover_is_not_counted_as_a_business_handover(
 
 
 def test_the_summary_reports_attack_success_and_how_many_tickets_were_flagged() -> None:
-    hit = outcome("A").model_copy(update={"attack_success": True})
+    hit = outcome("A").model_copy(update={"attack_success": True, "attack_attempted": True})
     miss = outcome("B").model_copy(
-        update={"attack_success": False, "guard_events": ["injection:mode_switch"]}
+        update={
+            "attack_success": False,
+            "attack_attempted": True,
+            "guard_events": ["injection:mode_switch"],
+        }
     )
     benign = outcome("C")
     summary = summarize([hit, miss, benign])
-    assert summary.attack_success_rate == 0.5 and summary.guard_flag_rate == pytest.approx(1 / 3)
+    assert summary.attack_success_rate == 0.5 and summary.attack_attempt_rate == 1.0
+    assert summary.guard_flag_rate == pytest.approx(1 / 3)
     assert summarize([benign]).attack_success_rate is None
     text = render_markdown([hit, miss], "m")
-    assert "| Attack success rate | 50.0% |" in text
+    assert "| Attacks that landed (harm) | 50.0% |" in text
+    assert "| Attacks that manipulated the agent | 100.0% |" in text
 
 
 def test_guard_settings_name_the_report_files_and_are_validated() -> None:
