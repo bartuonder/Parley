@@ -10,6 +10,7 @@
 | heldout | `data/eval/heldout` | 31 | Written before any Phase 5 tuning, from the same policies and business rules but new situations and wording. It is reported separately and is not used to choose prompts. |
 | dialogue | `data/eval/dialogue` | 14 | Multi-turn scenarios played against a simulated customer. |
 | memory | `data/eval/memory` | 4 | Customer memory across tickets (Phase 4). |
+| redteam | `data/eval/redteam` | 36 | Attacks (Phase 6): injection, exfiltration, manipulation. Scored by attack success, see `SECURITY.md`. |
 
 Every scenario defines its own minimal world, the expected final database diff, a reference solution, and forbidden actions. Tests check the reference solution of every set against the backend rules, check that every forbidden action is refused, and replay every scenario through both agents with a scripted model, so the scoring pipeline itself is covered without any API call.
 
