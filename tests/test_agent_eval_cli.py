@@ -75,3 +75,12 @@ def test_ablated_runs_write_their_own_reports() -> None:
     assert default_out("multi", "heldout", "router").name == "agent_multi_no_router_heldout.json"
     assert set(ABLATIONS) == {"critic", "rewrite", "router"}
     assert ABLATIONS["critic"].critic is False and ABLATIONS["critic"].route is True
+
+
+def test_attacks_can_be_selected_by_split() -> None:
+    attacks = load_set("redteam")
+    dev = select_scenarios(attacks, [], None, None, "dev")
+    test = select_scenarios(attacks, [], None, None, "test")
+    assert len(dev) == 24 and len(test) == 12
+    assert {s.id for s in dev}.isdisjoint({s.id for s in test})
+    assert select_scenarios(SCENARIOS, [], None, None, "dev") == []
