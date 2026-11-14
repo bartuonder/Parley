@@ -65,6 +65,10 @@ def select_scenarios(
     return chosen[:limit] if limit else chosen
 
 
+def needs_simulator(scenarios: list[Scenario]) -> bool:
+    return any(s.dialogue is not None for s in scenarios)
+
+
 def build_report(
     outcomes: list[ScenarioOutcome],
     model: str,
@@ -126,9 +130,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
             build_default_index(session)
         client = LiteLLMClient(model=model)
         simulator = (
-            LiteLLMClient(model=settings.simulator_model)
-            if args.scenario_set == "dialogue"
-            else None
+            LiteLLMClient(model=settings.simulator_model) if needs_simulator(scenarios) else None
         )
         judge = LiteLLMClient(model=settings.judge_model) if args.judge else None
         runs: list[list[ScenarioOutcome]] = []
@@ -213,7 +215,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "scenario_set": args.scenario_set,
         "repeats": args.repeats,
         "router_model": settings.router_model if args.arch == "multi" else None,
-        "simulator_model": settings.simulator_model if args.scenario_set == "dialogue" else None,
+        "simulator_model": settings.simulator_model if needs_simulator(scenarios) else None,
         "judge_model": settings.judge_model if args.judge else None,
         "ablation": args.ablate,
         "guards": args.guards,
