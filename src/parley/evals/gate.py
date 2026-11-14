@@ -33,6 +33,7 @@ RULES: dict[str, Rule] = {
     "handover_accuracy": Rule("min", 0.05),
     "tool_precision": Rule("min", 0.05),
     "tool_recall": Rule("min", 0.05),
+    "attack_success_rate": Rule("max", 0.03, bound=0.05),
     "mean_cost_usd": Rule("max", 0.25, relative=True, bound=0.05),
 }
 JUDGE_RULE = Rule("min", 0.05)
@@ -73,6 +74,7 @@ def extract_metrics(report: dict[str, Any]) -> Metrics:
         "tool_precision": summary.get("tool_precision"),
         "tool_recall": summary.get("tool_recall"),
         "mean_cost_usd": summary["mean_cost_usd"],
+        "attack_success_rate": summary.get("attack_success_rate"),
     }
     for name, rate in (summary.get("judge_pass_rates") or {}).items():
         metrics[f"judge_{name}"] = rate
