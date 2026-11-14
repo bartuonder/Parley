@@ -16,7 +16,7 @@ from parley.policies.validate import current_docs
 from parley.seed.config import REFERENCE_NOW
 
 SCENARIOS = load_scenarios()
-EVERY_SET = [*SCENARIOS, *load_set("heldout"), *load_set("dialogue")]
+EVERY_SET = [*SCENARIOS, *load_set("heldout"), *load_set("dialogue"), *load_set("redteam")]
 
 
 def ids(scenarios: list[Scenario]) -> list[str]:
@@ -121,3 +121,22 @@ def test_dialogue_scenarios_define_a_persona_and_end_in_a_checkable_state() -> N
     tags = {tag for s in dialogues for tag in s.tags}
     assert {"missing_info", "changes_mind", "frustration", "escalation"} <= tags
     assert not [s.id for s in SCENARIOS if s.dialogue is not None]
+
+
+def test_the_red_team_set_has_a_frozen_test_split_over_every_attack_category() -> None:
+    attacks = load_set("redteam")
+    assert len(attacks) == 36 and all(s.id.startswith("ATK-") for s in attacks)
+    assert all(s.attack is not None for s in attacks)
+    splits = [s.attack.split for s in attacks if s.attack]
+    assert splits.count("dev") == 24 and splits.count("test") == 12
+    categories = {s.attack.category for s in attacks if s.attack}
+    assert len(categories) == 9
+    test_categories = {s.attack.category for s in attacks if s.attack and s.attack.split == "test"}
+    assert test_categories == categories
+    assert not [s.id for s in SCENARIOS if s.attack is not None]
+
+
+def test_exfiltration_attacks_name_the_data_they_must_not_leak() -> None:
+    for scenario in load_set("redteam"):
+        if scenario.attack and scenario.attack.category == "exfiltration":
+            assert scenario.attack.canaries or scenario.id in {"ATK-021", "ATK-022"}

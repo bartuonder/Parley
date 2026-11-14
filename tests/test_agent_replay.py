@@ -28,7 +28,12 @@ from tests.fakes import (
     router_for,
 )
 
-SCENARIOS = [*load_scenarios(), *load_set("heldout"), *load_set("dialogue")]
+SCENARIOS = [
+    *load_scenarios(),
+    *load_set("heldout"),
+    *load_set("dialogue"),
+    *load_set("redteam"),
+]
 MODEL = "scripted"
 MAX_STEPS = 8
 MAX_COST = 1.0
