@@ -65,7 +65,7 @@ def issue_refund(ctx: ToolContext, params: IssueRefundParams) -> RefundResult:
         params.target,
         params.target_id,
         params.amount_cents,
-        params.reason,
+        ctx.clean(params.reason),
         refund_key(ctx, params),
     )
     base = RefundOut.model_validate(refund)
@@ -83,7 +83,7 @@ def cancel_subscription(ctx: ToolContext, params: CancelSubscriptionParams) -> S
 
 
 def escalate_to_human(ctx: ToolContext, params: EscalateParams) -> Escalated:
-    ctx.escalations.append(Escalation(params.reason, params.summary))
+    ctx.escalations.append(Escalation(params.reason, ctx.clean(params.summary)))
     return Escalated(reason=params.reason)
 
 

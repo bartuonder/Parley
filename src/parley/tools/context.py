@@ -4,6 +4,7 @@ from typing import Any
 from parley.backend.services import Backend
 from parley.rag.retrieval import Retriever
 from parley.security.guards import GuardConfig
+from parley.security.redact import redact
 from parley.tools.permissions import ALL_PERMISSIONS, Permission
 
 
@@ -35,3 +36,9 @@ class ToolContext:
     guards: GuardConfig = field(default_factory=GuardConfig.off)
     write_locked: bool = False
     guard_events: list[str] = field(default_factory=list)
+
+    def clean(self, text: str) -> str:
+        """Mask other people's personal data before text is stored in a record."""
+        if not self.guards.redact_records:
+            return text
+        return redact(text, keep=[self.backend.get_customer(self.customer_id).email])
