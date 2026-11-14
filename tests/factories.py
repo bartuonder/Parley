@@ -16,9 +16,11 @@ from parley.db.models import Customer, Order, OrderItem, Shipment, Subscription
 NOW = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
 
 
-def make_customer(session: Session, email: str = "ada@example.com") -> Customer:
+def make_customer(
+    session: Session, email: str = "ada@example.com", name: str = "Ada Lovelace"
+) -> Customer:
     customer = Customer(
-        email=email, name="Ada Lovelace", country="GB", tier=CustomerTier.STANDARD, created_at=NOW
+        email=email, name=name, country="GB", tier=CustomerTier.STANDARD, created_at=NOW
     )
     session.add(customer)
     session.flush()
