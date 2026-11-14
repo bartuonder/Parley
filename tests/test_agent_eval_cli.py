@@ -65,7 +65,7 @@ def test_the_memory_set_writes_its_own_report_files() -> None:
 def test_named_sets_load_and_unknown_sets_are_rejected() -> None:
     assert {s.id for s in load_set("core")} == {s.id for s in SCENARIOS}
     assert {s.id for s in load_set("memory")} >= {"MEM-001"}
-    assert set(SCENARIO_SETS) == {"core", "heldout", "memory", "dialogue"}
+    assert set(SCENARIO_SETS) == {"core", "heldout", "memory", "dialogue", "redteam"}
     with pytest.raises(KeyError, match="unknown scenario set"):
         load_set("nope")
 
