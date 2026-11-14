@@ -18,9 +18,14 @@ RULES: dict[str, re.Pattern[str]] = {
         re.IGNORECASE,
     ),
     "role_marker": re.compile(
-        r"(?im)^\s*(?:\[\s*|<\s*\|?\s*|#{1,3}\s*)?(?:system|developer|admin(?:istrator)?|"
-        r"assistant)\s*(?:\]|\|?\s*>)?\s*(?:notice|message|override|update|prompt)?\s*[:>\]]"
+        r"(?im)(?:^|[.;!?(\[|])\s*(?:\[\s*|<\s*\|?\s*|#{1,3}\s*)?(?:system|developer|admin(?:istrator)?"
+        r"|assistant)\s*(?:\]|\|?\s*>)?\s*(?:notice|message|override|update|prompt|note)?\s*[:>\]]"
         r"|<\|?(?:im_start|im_end|system)\|?>"
+    ),
+    "addressed_to_assistant": re.compile(
+        r"\b(?:notes?|instructions?|commands?)\s+(?:to|for)\s+(?:the\s+)?(?:assistant|"
+        r"ai|bot|model)\b",
+        re.IGNORECASE,
     ),
     "mode_switch": re.compile(
         r"\b(?:system|admin|developer|maintenance|debug|god|sudo)[\s_-]?(?:override|mode|access)\b"
