@@ -18,3 +18,4 @@ build/
 .DS_Store
 .cache/
 reports/**/traces/
+reports/phase7/*.json
