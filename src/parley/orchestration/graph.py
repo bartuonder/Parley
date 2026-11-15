@@ -158,6 +158,7 @@ async def critic(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         fence=deps.ctx.guards.spotlight,
         injection_check=deps.ctx.guards.critic,
         guard_notes="; ".join(deps.ctx.guard_events),
+        now=deps.ctx.backend.now(),
     )
     update: dict[str, Any] = {
         "verdict": verdict.model_dump(exclude={"usage"}),

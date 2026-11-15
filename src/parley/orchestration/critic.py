@@ -1,6 +1,8 @@
 import json
 import logging
 import re
+from collections.abc import Sequence
+from datetime import datetime, timedelta
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -69,9 +71,50 @@ PLURAL_REQUEST = re.compile(
 )
 
 
-def rule_issues(ticket: Ticket, proposals: list[Proposal]) -> list[str]:
-    """Checks that need no model: legal threats go to a human, one request names one plan."""
+FRAUD_WINDOW_DAYS = 30
+FRAUD_PRIOR_REFUNDS = 2
+COUNTED_REFUNDS = {"processed", "pending_approval"}
+
+
+def recent_refunds(calls: Sequence[ToolInvocation], now: datetime) -> int:
+    """Refunds of the sender seen in the tool output that were made in the last 30 days."""
+    found: dict[int, datetime] = {}
+
+    def visit(node: Any) -> None:
+        if isinstance(node, dict):
+            if node.get("status") in COUNTED_REFUNDS and "amount_cents" in node and "id" in node:
+                created = node.get("created_at")
+                if isinstance(created, str):
+                    found[int(node["id"])] = datetime.fromisoformat(created)
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+
+    for call in calls:
+        if call.ok:
+            visit(call.output)
+    cutoff = now - timedelta(days=FRAUD_WINDOW_DAYS)
+    return sum(1 for created in found.values() if created >= cutoff)
+
+
+def rule_issues(
+    ticket: Ticket,
+    proposals: list[Proposal],
+    calls: Sequence[ToolInvocation] = (),
+    now: datetime | None = None,
+) -> list[str]:
+    """Checks that need no model: legal threats, vague cancellations, and a refund pattern."""
     issues: list[str] = []
+    if now is not None and any(p.kind == REFUND for p in proposals):
+        prior = recent_refunds(calls, now)
+        if prior >= FRAUD_PRIOR_REFUNDS:
+            issues.append(
+                f"POL-ESC-002 suspected fraud pattern: the customer already has {prior} refunds "
+                f"in the last {FRAUD_WINDOW_DAYS} days. Do not propose another refund; propose a "
+                "handover with reason suspected_fraud and do not accuse the customer."
+            )
     cancelled = {p.arguments.get("subscription_id") for p in proposals if p.kind == CANCEL}
     if len(cancelled) > 1 and not PLURAL_REQUEST.search(f"{ticket.subject}\n{ticket.body}"):
         issues.append(
@@ -125,9 +168,10 @@ async def review(
     fence: bool = False,
     injection_check: bool = False,
     guard_notes: str = "",
+    now: datetime | None = None,
 ) -> Verdict:
     """Rule checks first; if they pass, a model compares the proposal with the evidence."""
-    found = rule_issues(ticket, proposals)
+    found = rule_issues(ticket, proposals, calls, now)
     if found:
         return Verdict(approved=False, issues=found, source="rules")
     proposed = [{"kind": p.kind, **p.arguments} for p in proposals]
