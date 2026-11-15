@@ -139,13 +139,14 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 7 kickoff
-1. Propose the plan for observability and optimization (tracing, cost dashboard, prompt caching, model routing, semantic cache, before and after table), wait for approval. First look at the held-out regression the guards caused (see Decisions, 2026-11-14).
-2. Implement in small commits, tests first where it helps, lint and tests before every commit.
+## Today: Phase 8 kickoff
+1. Run `make eval-gate` with two repeats first (the Phase 7 gate was only run once per set to save money, see `docs/OBSERVABILITY.md`), review the failures, and refresh `reports/baseline.json` with a written reason.
+2. Propose the plan for productization (streaming API, console with trace viewer and approval queue, one-command Compose, deploy, load test), wait for approval.
+3. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
 ## Progress
 - [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
-- [x] Phase 5  - [x] Phase 6  - [ ] Phase 7  - [ ] Phase 8  - [ ] Phase 9
+- [x] Phase 5  - [x] Phase 6  - [x] Phase 7  - [ ] Phase 8  - [ ] Phase 9
 
 ## Decisions
 (Record architectural decisions here: date, decision, reason.)
@@ -197,3 +198,9 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-14: Defenses are switchable guards (`GuardConfig`): untrusted text is fenced with a per-request token, a rule-based scan of the ticket and every tool output locks refunds and cancellations for a suspect ticket and hands it to a human (the ticket is still answered), replies are checked for prompt or tool internals and other people's personal data, stored notes are redacted, policy passages must match the policy files, the critic checks for injected instructions, and refunds split to stay under the approval threshold are refused. They are on in the eval harness and off in unit tests of single tools.
 - 2026-11-14: Security is measured with two numbers: the agent was manipulated (it tried a forbidden action, even if blocked) and the attack landed (state changed, canary leaked, internals exposed). The backend rules already block most forbidden refunds, so harm alone hides how often the model was fooled. The red-team set has a dev split used while building the guards and a test split kept out of tuning; one test attack (ATK-028) was fixed after it failed and is disclosed as such.
 - 2026-11-14: A guard-triggered handover is not counted as the agent's own handover decision and is reported as the share of tickets flagged. With the guards on, the gate failed three held-out checks (handover, refund precision, judge false claims) mostly through HLD-011; the baseline was left at the Phase 5 numbers so that the regression stays visible until it is reviewed.
+- 2026-11-15: Tracing uses the OpenTelemetry SDK behind one small `Telemetry` singleton that is a no-op when not configured. Two exporters: a JSONL file per eval report (git-ignored) and a `trace_spans` table in Postgres (migration 0006, outside the seed reset). Cost is the sum of `llm.complete` spans under a `node.*` span, so the dashboard reads spans only and any past run can be re-read.
+- 2026-11-15: Measured split of the model cost: specialist 70%, critic 19%, responder 10%, router 1%. The prompt cache already serves 56% of specialist prompt tokens because tool definitions and the system prompt come first; critic and responder prompts are under the 1,024-token cache minimum.
+- 2026-11-15: A cheaper critic and responder (`gpt-4o-mini`) and a larger critic (`gpt-4.1`) both lose to `gpt-4.1-mini` everywhere on cost, time or success. `gpt-4.1-nano` is deprecated. The router stays a model call; the softmax classifier router (`--router hybrid`) saves half a second but broke SUB-004, and its "accepted specialist" accuracy hid that.
+- 2026-11-15: The semantic cache (policy search only, never replies) is kept as code and a replay tool but not enabled: 0.9 searches per ticket at 162 ms, and a reused answer had another best passage in 6% of the reuses at similarity 0.95. Compact tool output changed nothing and stays an option.
+- 2026-11-15: Reading the customer overview before the first turn (`--prefetch`) cuts about 10% of the cost but made the model investigate less (HLD-019 and ATK-027 failed in every gate run), so it is an option and off by default. The fraud pattern (two refunds in 30 days plus a new refund request) became a deterministic critic rule because the model judged it inconsistently; that resolves the HLD-011 regression of 2026-11-14.
+- 2026-11-15: The Phase 7 gate was run once per set with prefetch off (`reports/phase7/gate_final`) and still fails on tool recall and judge facts covered by one or two scenarios; `reports/baseline.json` stays at the Phase 6 numbers until a two-repeat run is reviewed. Tool recall on the red-team scope has three expected writes, so it is too coarse to gate on there.
