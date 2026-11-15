@@ -77,3 +77,11 @@ def test_the_prefix_a_provider_can_cache_is_the_same_for_every_ticket() -> None:
     assert with_memory[:shared] == first[:shared]
     schemas = [s.json_schema() for s in specialist_registry(Specialist.BILLING).specs]
     assert schemas == [s.json_schema() for s in specialist_registry(Specialist.BILLING).specs]
+
+
+def test_with_a_prefetched_overview_the_prompt_says_it_is_already_there() -> None:
+    plain = specialist_prompt(Specialist.BILLING, date(2026, 6, 1))
+    ready = specialist_prompt(Specialist.BILLING, date(2026, 6, 1), prefetched=True)
+    assert "then call get_customer_overview" in plain and "do not call it again" not in plain
+    assert "do not call it again" in ready and "then call get_customer_overview" not in ready
+    assert "{" not in ready and "}" not in ready
