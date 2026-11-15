@@ -24,12 +24,14 @@ class ToolCall(BaseModel):
 class Usage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    cached_tokens: int = 0
     cost_usd: float = 0.0
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
             prompt_tokens=self.prompt_tokens + other.prompt_tokens,
             completion_tokens=self.completion_tokens + other.completion_tokens,
+            cached_tokens=self.cached_tokens + other.cached_tokens,
             cost_usd=self.cost_usd + other.cost_usd,
         )
 
@@ -95,8 +97,10 @@ def _usage(response: Any) -> Usage:
     except Exception:
         logger.warning("no price known for model %s", getattr(response, "model", "?"))
         cost = 0.0
+    details = getattr(raw, "prompt_tokens_details", None)
     return Usage(
         prompt_tokens=getattr(raw, "prompt_tokens", 0) or 0,
         completion_tokens=getattr(raw, "completion_tokens", 0) or 0,
+        cached_tokens=getattr(details, "cached_tokens", 0) or 0,
         cost_usd=cost,
     )
