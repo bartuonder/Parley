@@ -114,13 +114,9 @@ def test_compact_tool_output_is_an_option_and_off_by_default() -> None:
     assert parse_args([]).compact is False and parse_args(["--compact"]).compact is True
 
 
-def test_the_multi_agent_graph_prefetches_the_overview_by_default_and_routes_with_the_model() -> (
-    None
-):
+def test_the_overview_prefetch_is_an_option_and_the_model_routes_by_default() -> None:
     multi = parse_args(["--arch", "multi"])
-    assert multi.prefetch is True and multi.router == "llm"
-    single = parse_args([])
-    assert single.prefetch is False and single.router == "llm"
-    off = parse_args(["--arch", "multi", "--no-prefetch", "--router", "hybrid"])
-    assert off.prefetch is False and off.router == "hybrid"
-    assert parse_args(["--prefetch"]).prefetch is True
+    assert multi.prefetch is False and multi.router == "llm"
+    on = parse_args(["--arch", "multi", "--prefetch", "--router", "hybrid"])
+    assert on.prefetch is True and on.router == "hybrid"
+    assert parse_args(["--prefetch", "--no-prefetch"]).prefetch is False

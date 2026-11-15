@@ -213,8 +213,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--prefetch",
         action=argparse.BooleanOptionalAction,
-        default=None,
-        help="read the customer overview before the first turn; on for the multi-agent graph",
+        default=False,
+        help="read the customer overview before the first turn (cheaper, less thorough)",
     )
     parser.add_argument("--router-threshold", type=float, default=0.5)
     parser.add_argument("--router-model", help="model of the router, default PARLEY_ROUTER_MODEL")
@@ -232,9 +232,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parse_guards(args.guards)
     except ValueError as exc:
         parser.error(str(exc))
-    multi = args.arch == "multi"
     args.router = args.router or "llm"
-    args.prefetch = multi if args.prefetch is None else args.prefetch
     return args
 
 
