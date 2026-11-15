@@ -119,7 +119,9 @@ async def investigate(state: GraphState, config: RunnableConfig) -> dict[str, An
         model=deps.model,
         max_steps=deps.max_steps,
         max_cost_usd=deps.max_cost_usd,
-        system=specialist_prompt(specialist, ctx.backend.now().date(), memory),
+        system=specialist_prompt(
+            specialist, ctx.backend.now().date(), memory, prefetched=ctx.prefetch_overview
+        ),
         notes=state.get("feedback", ""),
         final=False,
     )

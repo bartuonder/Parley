@@ -36,10 +36,7 @@ Today is {today}. Money amounts in tools are integer cents; show customers norma
 amounts.
 
 How to work:
-1. Read the ticket, then call get_customer_overview to see all of the sender's orders, \
-subscriptions, invoices and existing refunds. The ticket may point at the wrong record (for \
-example the first invoice of a duplicate pair), so check the surrounding records first. \
-Never guess ids or amounts.
+1. {overview_rule}
 2. Find the rule that applies with search_policies. Only the passages the tool returns are \
 in force. Cite policy versions such as POL-REF-001@v2 in your notes.
 3. Before deciding that a refund is or is not possible, call check_refund_eligibility; it \
@@ -100,7 +97,26 @@ MEMORY_GUIDANCE = (
 )
 
 
-def specialist_prompt(specialist: Specialist, today: date, memory: str = "") -> str:
+OVERVIEW_RULE = (
+    "Read the ticket, then call get_customer_overview to see all of the sender's orders, "
+    "subscriptions, invoices and existing refunds. The ticket may point at the wrong record (for "
+    "example the first invoice of a duplicate pair), so check the surrounding records first. "
+    "Never guess ids or amounts."
+)
+
+PREFETCHED_OVERVIEW_RULE = (
+    "Read the ticket, then read the overview of the sender's orders, subscriptions, invoices "
+    "and existing refunds that is already in the conversation as the result of "
+    "get_customer_overview; do not call it again. The ticket may point at the wrong record (for "
+    "example the first invoice of a duplicate pair), so check the surrounding records first. "
+    "Look at every item of an order before you decide, and use get_order, get_invoice or "
+    "get_subscription when the overview is not enough. Never guess ids or amounts."
+)
+
+
+def specialist_prompt(
+    specialist: Specialist, today: date, memory: str = "", prefetched: bool = False
+) -> str:
     memory_block = (
         f"\nWhat is known about this customer from earlier tickets:\n{memory}\n{MEMORY_GUIDANCE}\n"
         if memory
@@ -112,6 +128,7 @@ def specialist_prompt(specialist: Specialist, today: date, memory: str = "") -> 
         threshold=APPROVAL_THRESHOLD_CENTS,
         domain=DOMAIN_NOTES[specialist],
         memory=memory_block,
+        overview_rule=PREFETCHED_OVERVIEW_RULE if prefetched else OVERVIEW_RULE,
     )
 
 
