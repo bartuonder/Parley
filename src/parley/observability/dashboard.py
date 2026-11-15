@@ -225,13 +225,13 @@ def render_dashboard(spans: list[Span], title: str = "Cost and latency") -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the cost dashboard from a span file.")
-    parser.add_argument("traces", type=Path, help="a reports/traces/*.jsonl file")
+    parser.add_argument("traces", nargs="+", type=Path, help="span files (.jsonl) to combine")
     parser.add_argument("--out", type=Path, default=PROJECT_ROOT / "reports" / "dashboard.html")
     parser.add_argument("--title", default="Cost and latency")
     args = parser.parse_args()
-    spans = read_spans(args.traces)
+    spans = [span for path in args.traces for span in read_spans(path)]
     if not spans:
-        raise SystemExit(f"no spans in {args.traces}")
+        raise SystemExit("no spans in the given files")
     args.out.write_text(render_dashboard(spans, args.title), encoding="utf-8")
     print(render_cost_table(spans))
 
