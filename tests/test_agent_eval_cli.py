@@ -100,3 +100,11 @@ def test_spans_are_written_next_to_the_report_unless_switched_off() -> None:
     path = trace_path(default_out("multi", "heldout"))
     assert path.parent.name == "traces" and path.name == "agent_multi_heldout.jsonl"
     assert parse_args([]).no_trace is False and parse_args(["--no-trace"]).no_trace is True
+
+
+def test_each_role_of_the_graph_can_get_its_own_model_from_the_command_line() -> None:
+    args = parse_args(
+        ["--arch", "multi", "--router-model", "r", "--critic-model", "c", "--responder-model", "p"]
+    )
+    assert (args.router_model, args.critic_model, args.responder_model) == ("r", "c", "p")
+    assert parse_args([]).critic_model is None
