@@ -17,6 +17,8 @@ from parley.evals.scoring import ScenarioOutcome, score
 from parley.evals.state import take_snapshot
 from parley.evals.tamper import TamperedRetriever
 from parley.evals.world import WorldIndex, build_world, render_text
+from parley.observability.llm import TracedLLM
+from parley.observability.tracing import span
 from parley.orchestration.graph import Switches
 from parley.orchestration.runner import run_multi
 from parley.rag.retrieval import Retriever
@@ -60,6 +62,49 @@ async def run_scenario(
     arch: Architecture = SINGLE,
     simulator: LLMClient | None = None,
 ) -> ScenarioOutcome:
+    """Run one scenario inside a trace and return its scored outcome."""
+    with span(
+        "scenario",
+        "scenario",
+        scenario_id=scenario.id,
+        arch=arch.name,
+        category=scenario.category,
+        guards=arch.guards.any_on,
+    ) as handle:
+        outcome = await _play(
+            session,
+            scenario,
+            llm_factory,
+            retriever,
+            model=model,
+            max_steps=max_steps,
+            max_cost_usd=max_cost_usd,
+            now=now,
+            arch=arch,
+            simulator=simulator,
+        )
+        handle.set(
+            success=outcome.success,
+            cost_usd=outcome.cost_usd,
+            turns=outcome.turns,
+            guard_events=outcome.guard_events,
+        )
+        return outcome.model_copy(update={"trace_id": handle.trace_id})
+
+
+async def _play(
+    session: Session,
+    scenario: Scenario,
+    llm_factory: LLMFactory,
+    retriever: RetrieverFactory,
+    *,
+    model: str,
+    max_steps: int,
+    max_cost_usd: float,
+    now: datetime,
+    arch: Architecture,
+    simulator: LLMClient | None,
+) -> ScenarioOutcome:
     """Build the scenario world, let the agent handle its ticket, and score the final state."""
     index = build_world(session, scenario, now)
     backend = Backend(session, lambda: now)
@@ -71,11 +116,15 @@ async def run_scenario(
         body=render_text(scenario.ticket.body, index),
     )
     customer = backend.find_customer_by_email(ticket.sender_email)
-    llm = llm_factory(scenario, index)
+    llm = TracedLLM(llm_factory(scenario, index))
     if arch.name == "multi" and arch.router_llm_factory is None:
         raise ValueError("the multi architecture needs a router model")
 
     async def handle(turn_ticket: Ticket) -> AgentResult:
+        with span("ticket", "ticket", ticket_id=turn_ticket.id):
+            return await _handle(turn_ticket)
+
+    async def _handle(turn_ticket: Ticket) -> AgentResult:
         ctx = ToolContext(
             backend,
             customer.id,
@@ -85,7 +134,7 @@ async def run_scenario(
         )
         if arch.router_llm_factory is not None and arch.name == "multi":
             return await run_multi(
-                arch.router_llm_factory(scenario, index),
+                TracedLLM(arch.router_llm_factory(scenario, index)),
                 llm,
                 ctx,
                 turn_ticket,

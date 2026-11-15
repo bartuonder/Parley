@@ -11,6 +11,7 @@ from parley.backend.services import (
     NotEligibleError,
     NotFoundError,
 )
+from parley.observability.tracing import span
 from parley.security.guards import LOCK_MESSAGE, LOCKED_TOOLS
 from parley.tools.access import AccessDeniedError
 from parley.tools.context import ToolContext
@@ -67,6 +68,12 @@ class ToolRegistry:
         return list(self._specs.values())
 
     def call(self, ctx: ToolContext, name: str, arguments: dict[str, Any]) -> ToolResult:
+        with span(f"tool.{name}", "tool", tool=name) as handle:
+            result = self._call(ctx, name, arguments)
+            handle.set(ok=result.ok, error_code=result.error_code)
+            return result
+
+    def _call(self, ctx: ToolContext, name: str, arguments: dict[str, Any]) -> ToolResult:
         spec = self._specs.get(name)
         if spec is None:
             return ToolResult.failure("unknown_tool", f"no tool named {name}")

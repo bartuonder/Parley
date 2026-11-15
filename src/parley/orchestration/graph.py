@@ -13,6 +13,7 @@ from parley.agent.result import StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
 from parley.memory.facts import decision_facts, facts_from_run
 from parley.memory.store import recall, recall_for_ticket, remember, render_memory
+from parley.observability.tracing import traced_node
 from parley.orchestration.critic import review
 from parley.orchestration.executor import ExecutedAction, execute_proposals
 from parley.orchestration.responder import money, respond
@@ -264,14 +265,14 @@ def build_graph(
     checkpointer: BaseCheckpointSaver[Any] | None = None,
 ) -> CompiledStateGraph[Any, Any, Any, Any]:
     builder = StateGraph(GraphState)
-    builder.add_node("triage", triage)
-    builder.add_node("investigate", investigate)
-    builder.add_node("critic", critic)
-    builder.add_node("handover", handover)
-    builder.add_node("execute", execute)
-    builder.add_node("respond", respond_node)
-    builder.add_node("remember", remember_node)
-    builder.add_node("approval", approval)
+    builder.add_node("triage", traced_node("triage")(triage))
+    builder.add_node("investigate", traced_node("investigate")(investigate))
+    builder.add_node("critic", traced_node("critic")(critic))
+    builder.add_node("handover", traced_node("handover")(handover))
+    builder.add_node("execute", traced_node("execute")(execute))
+    builder.add_node("respond", traced_node("respond")(respond_node))
+    builder.add_node("remember", traced_node("remember")(remember_node))
+    builder.add_node("approval", traced_node("approval")(approval))
 
     builder.add_edge(START, "triage")
     builder.add_edge("triage", "investigate")

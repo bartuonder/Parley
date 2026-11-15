@@ -63,6 +63,7 @@ class ScenarioOutcome(BaseModel):
     revisions: int = 0
     critic_source: str | None = None
     ticket_text: str = ""
+    trace_id: str | None = None
     judge: dict[str, bool] | None = None
     judge_reasons: dict[str, str] = Field(default_factory=dict)
     judge_cost_usd: float = 0.0
