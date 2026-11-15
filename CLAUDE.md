@@ -140,7 +140,7 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 ---
 
 ## Today: Phase 8 kickoff
-1. Run `make eval-gate` with two repeats first (the Phase 7 gate was only run once per set to save money, see `docs/OBSERVABILITY.md`), review the failures, and refresh `reports/baseline.json` with a written reason.
+1. Run `make eval-gate` (three repeats, about $1.7) first (the Phase 7 gate was only run once per set to save money, see `docs/OBSERVABILITY.md`), review the failures, and refresh `reports/baseline.json` with a written reason.
 2. Propose the plan for productization (streaming API, console with trace viewer and approval queue, one-command Compose, deploy, load test), wait for approval.
 3. Implement in small commits, tests first where it helps, lint and tests before every commit.
 
@@ -203,4 +203,4 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-15: A cheaper critic and responder (`gpt-4o-mini`) and a larger critic (`gpt-4.1`) both lose to `gpt-4.1-mini` everywhere on cost, time or success. `gpt-4.1-nano` is deprecated. The router stays a model call; the softmax classifier router (`--router hybrid`) saves half a second but broke SUB-004, and its "accepted specialist" accuracy hid that.
 - 2026-11-15: The semantic cache (policy search only, never replies) is kept as code and a replay tool but not enabled: 0.9 searches per ticket at 162 ms, and a reused answer had another best passage in 6% of the reuses at similarity 0.95. Compact tool output changed nothing and stays an option.
 - 2026-11-15: Reading the customer overview before the first turn (`--prefetch`) cuts about 10% of the cost but made the model investigate less (HLD-019 and ATK-027 failed in every gate run), so it is an option and off by default. The fraud pattern (two refunds in 30 days plus a new refund request) became a deterministic critic rule because the model judged it inconsistently; that resolves the HLD-011 regression of 2026-11-14.
-- 2026-11-15: The Phase 7 gate was run once per set with prefetch off (`reports/phase7/gate_final`) and still fails on tool recall and judge facts covered by one or two scenarios; `reports/baseline.json` stays at the Phase 6 numbers until a two-repeat run is reviewed. Tool recall on the red-team scope has three expected writes, so it is too coarse to gate on there.
+- 2026-11-15: The Phase 7 gate was run once per set with prefetch off (`reports/phase7/gate_final`) and still fails on tool recall and judge facts covered by one or two scenarios; `reports/baseline.json` stays at the Phase 6 numbers until a full repeated run is reviewed. Tool recall on the red-team scope has three expected writes, so it is too coarse to gate on there.
