@@ -53,6 +53,10 @@ triage -> specialist -> critic -> execute -> respond -> remember -> [approval pa
 - **Unreadable critic answer.** If the critic's reply is not valid JSON, the plan is approved with a warning. Each result records `critic_source` (`rules`, `llm`, or `unparsed`) and the report shows the share of unreadable answers for multi-agent runs, so the fallback cannot hide.
 - **Customer memory.** After every ticket the graph stores short facts in `customer_memory`: refunds issued or pending, cancellations, handovers (reason only), and refunds the policy refused (reason code). Facts come from what tools did, never from ticket text, so a customer cannot write into the memory. The newest eight are shown to the specialist on the next ticket.
 
+## Guards
+
+Since Phase 6 every model call and tool call passes through switchable guards (`security/`, described in `SECURITY.md`): untrusted text is fenced, a scan of the ticket and tool output can lock refunds and cancellations and hand the ticket to a human, replies are checked before they leave, stored notes are redacted, policy passages are verified, and the critic looks for injected instructions. Every specialist can propose a cancellation, so a ticket that asks for a refund and a cancellation is handled by one specialist; the critic reviews both before anything runs.
+
 ## Evaluating
 
 ```
