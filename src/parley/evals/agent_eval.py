@@ -21,6 +21,8 @@ from parley.evals.report import (
 )
 from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
+from parley.observability.exporters import JsonlExporter
+from parley.observability.tracing import telemetry
 from parley.orchestration.graph import Switches
 from parley.rag.service import build_default_index, default_retriever
 from parley.security.guards import parse_guards
@@ -43,6 +45,10 @@ def default_out(
     name += "" if guards == "on" else f"_guards_{guards}"
     suffix = "" if scenario_set == "core" else f"_{scenario_set}"
     return PROJECT_ROOT / "reports" / f"{name}{suffix}.json"
+
+
+def trace_path(report_path: Path) -> Path:
+    return report_path.parent / "traces" / f"{report_path.stem}.jsonl"
 
 
 def select_scenarios(
@@ -177,6 +183,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--guards", default="on", help="on, off, or no_<guard> to switch one defense off"
     )
+    parser.add_argument("--no-trace", action="store_true", help="do not write the span file")
     parser.add_argument("--judge", action="store_true", help="grade every reply with the LLM judge")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
     parser.add_argument("--budget", type=float, default=DEFAULT_TOTAL_BUDGET_USD, help="USD cap")
@@ -198,7 +205,16 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     )
     if not scenarios:
         raise SystemExit(f"no scenarios selected from the {args.scenario_set} set")
-    runs = asyncio.run(run(args, scenarios))
+    out = args.out or default_out(args.arch, args.scenario_set, args.ablate, args.guards)
+    traces = trace_path(out)
+    if not args.no_trace:
+        traces.parent.mkdir(parents=True, exist_ok=True)
+        traces.write_text("", encoding="utf-8")
+        telemetry.configure([JsonlExporter(traces)])
+    try:
+        runs = asyncio.run(run(args, scenarios))
+    finally:
+        telemetry.shutdown()
     settings = get_settings()
     model = args.model or settings.agent_model
     flat = [o for run_outcomes in runs for o in run_outcomes]
@@ -223,8 +239,8 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "max_cost_usd": settings.agent_max_cost_usd,
         "max_revisions": settings.agent_max_revisions if args.arch == "multi" else None,
         "total_budget_usd": args.budget,
+        "traces": None if args.no_trace else traces.name,
     }
-    out = args.out or default_out(args.arch, args.scenario_set, args.ablate, args.guards)
     report = build_report(flat, model, limits, runs)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", "utf-8")
