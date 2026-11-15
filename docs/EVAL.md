@@ -36,7 +36,7 @@ The dialogue set covers missing information (which order, which plan, which item
 
 The judge is a stronger model than the agent (`PARLEY_JUDGE_MODEL`, default `gpt-4.1`; the agent is `gpt-4.1-mini`), to limit self-preference. `data/eval/judge/labels.yaml` holds 50 replies with labels for the four criteria: 36 real replies from the single and multi-agent runs (all failures first, then a seeded random sample of the rest) and 14 synthetic ones that inject a false promise, a data leak, or a bad tone into a real reply. `make judge-calibrate` compares the judge with the labels and writes `reports/judge_calibration.md`.
 
-**The labels were written by the same assistant that built the harness, not by an independent person.** They are a reference to be reviewed, not ground truth, and the agreement below is agreement with those labels.
+**The labels were written by the same assistant that built the harness and then reviewed and approved by the project owner.** The reviewer did not change a label, but the reviewer also did not write them independently, so the agreement below is agreement with a reviewed reference, not with labels made blind.
 
 ## Regression gate
 
