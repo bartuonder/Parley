@@ -1,9 +1,13 @@
+import json
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from parley.observability.dashboard import (
     group_llm,
     group_tools,
+    main,
     node_durations,
     render_cost_table,
     render_dashboard,
@@ -104,3 +108,19 @@ def test_the_dashboard_is_one_self_contained_page(tmp_path: Path) -> None:
     assert "Tool calls" in page and "get_order" in page
     assert "2 tickets, 5 model calls" in page
     assert "http://" not in page and "https://" not in page
+
+
+def test_the_command_combines_several_span_files_into_one_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first, second = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    for path, part in ((first, SPANS[:5]), (second, SPANS[5:])):
+        path.write_text("".join(json.dumps(s) + chr(10) for s in part), encoding="utf-8")
+    out = tmp_path / "page.html"
+    monkeypatch.setattr("sys.argv", ["dashboard", str(first), str(second), "--out", str(out)])
+    main()
+    assert "| investigate |" in capsys.readouterr().out
+    assert "Model cost by pipeline step" in out.read_text(encoding="utf-8")
+    monkeypatch.setattr("sys.argv", ["dashboard", str(tmp_path / "none.jsonl")])
+    with pytest.raises(SystemExit, match="no spans"):
+        main()
