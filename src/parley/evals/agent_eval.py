@@ -207,7 +207,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--router",
         choices=["llm", "classifier", "hybrid"],
         default=None,
-        help="how tickets route; the multi-agent default is hybrid, the single agent has no router",
+        help="how tickets route; the default is the model router",
     )
     parser.add_argument("--compact", action="store_true", help="leave empty fields out of tools")
     parser.add_argument(
@@ -233,7 +233,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     except ValueError as exc:
         parser.error(str(exc))
     multi = args.arch == "multi"
-    args.router = args.router or ("hybrid" if multi else "llm")
+    args.router = args.router or "llm"
     args.prefetch = multi if args.prefetch is None else args.prefetch
     return args
 
