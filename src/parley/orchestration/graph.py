@@ -65,6 +65,8 @@ class GraphDeps:
     max_cost_usd: float
     max_revisions: int
     switches: Switches = field(default_factory=Switches)
+    critic_llm: LLMClient | None = None
+    responder_llm: LLMClient | None = None
 
 
 def _deps(config: RunnableConfig) -> GraphDeps:
@@ -143,7 +145,7 @@ async def critic(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         return {"verdict": {"approved": True, "issues": [], "source": "skipped"}, "issues": []}
     calls = [ToolInvocation.model_validate(c) for c in state.get("trace", [])]
     verdict = await review(
-        deps.llm,
+        deps.critic_llm or deps.llm,
         Ticket.model_validate(state["ticket"]),
         _proposals(state),
         state.get("draft", ""),
@@ -190,7 +192,7 @@ async def execute(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
 async def respond_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     deps = _deps(config)
     final = await respond(
-        deps.llm,
+        deps.responder_llm or deps.llm,
         Ticket.model_validate(state["ticket"]),
         state.get("draft", ""),
         _actions(state),

@@ -41,6 +41,8 @@ class Architecture:
 
     name: str = "single"
     router_llm_factory: LLMFactory | None = None
+    critic_llm_factory: LLMFactory | None = None
+    responder_llm_factory: LLMFactory | None = None
     max_revisions: int = 2
     switches: Switches = field(default_factory=Switches)
     guards: GuardConfig = field(default_factory=GuardConfig)
@@ -143,6 +145,8 @@ async def _play(
                 max_cost_usd=max_cost_usd,
                 max_revisions=arch.max_revisions,
                 switches=arch.switches,
+                critic_llm=_role(arch.critic_llm_factory, scenario, index),
+                responder_llm=_role(arch.responder_llm_factory, scenario, index),
             )
         return await run_ticket(
             llm,
@@ -168,6 +172,10 @@ async def _play(
             "simulator_cost_usd": run.simulator_usage.cost_usd,
         }
     )
+
+
+def _role(factory: LLMFactory | None, scenario: Scenario, index: WorldIndex) -> LLMClient | None:
+    return TracedLLM(factory(scenario, index)) if factory is not None else None
 
 
 def _retriever_for(scenario: Scenario, found: Retriever | None) -> Retriever | None:

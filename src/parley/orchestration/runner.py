@@ -26,6 +26,8 @@ async def run_multi(
     max_revisions: int,
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     switches: Switches | None = None,
+    critic_llm: LLMClient | None = None,
+    responder_llm: LLMClient | None = None,
 ) -> AgentResult:
     """Run the multi-agent graph for one ticket; a paused approval still returns the reply."""
     started = time.perf_counter()
@@ -39,6 +41,7 @@ async def run_multi(
         max_revisions=max_revisions,
         switches=switches,
     )
+    deps.critic_llm, deps.responder_llm = critic_llm, responder_llm
     graph = build_graph(checkpointer or InMemorySaver())
     state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=_config(ticket, deps))
     return to_result(state, ticket, ctx, model, time.perf_counter() - started)

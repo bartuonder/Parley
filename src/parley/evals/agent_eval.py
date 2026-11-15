@@ -123,10 +123,14 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
     guards = parse_guards(args.guards)
     arch = Architecture(guards=guards)
     if args.arch == "multi":
-        router = LiteLLMClient(model=settings.router_model)
+        router = LiteLLMClient(model=args.router_model or settings.router_model)
+        critic = LiteLLMClient(model=args.critic_model) if args.critic_model else None
+        responder = LiteLLMClient(model=args.responder_model) if args.responder_model else None
         arch = Architecture(
             name="multi",
             router_llm_factory=lambda scenario, index: router,
+            critic_llm_factory=(lambda scenario, index: critic) if critic else None,
+            responder_llm_factory=(lambda scenario, index: responder) if responder else None,
             max_revisions=settings.agent_max_revisions,
             switches=ABLATIONS.get(args.ablate or "", Switches()),
             guards=guards,
@@ -183,6 +187,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--guards", default="on", help="on, off, or no_<guard> to switch one defense off"
     )
+    parser.add_argument("--router-model", help="model of the router, default PARLEY_ROUTER_MODEL")
+    parser.add_argument("--critic-model", help="model of the critic, default the agent model")
+    parser.add_argument("--responder-model", help="model of the responder, default the agent model")
     parser.add_argument("--no-trace", action="store_true", help="do not write the span file")
     parser.add_argument("--judge", action="store_true", help="grade every reply with the LLM judge")
     parser.add_argument("--model", help="override PARLEY_AGENT_MODEL")
@@ -230,7 +237,11 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "arch": args.arch,
         "scenario_set": args.scenario_set,
         "repeats": args.repeats,
-        "router_model": settings.router_model if args.arch == "multi" else None,
+        "router_model": (args.router_model or settings.router_model)
+        if args.arch == "multi"
+        else None,
+        "critic_model": args.critic_model,
+        "responder_model": args.responder_model,
         "simulator_model": settings.simulator_model if needs_simulator(scenarios) else None,
         "judge_model": settings.judge_model if args.judge else None,
         "ablation": args.ablate,
