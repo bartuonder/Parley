@@ -42,6 +42,10 @@ The router, the specialists, the critic and the responder each take their own mo
 
 `--compact` leaves empty fields out of the JSON a tool returns to the model.
 
+## Overview prefetch
+
+`--prefetch` runs `get_customer_overview` before the first model turn and puts the result in the conversation, so the specialist starts one model call later in the work. The specialist prompt then says the overview is already there. It is an option, not the default: see the results.
+
 ## Results
 
 All runs are the multi-agent graph on `gpt-4.1-mini` with the guards on. The cost of a ticket is the model cost only. Each experiment is one run of the core and held-out sets (86 tickets); a single run moves by one or two scenarios, so success differences of a point or two are noise.
@@ -81,7 +85,7 @@ A ticket takes about 5.9s: the specialist loop 3.6s (4 model calls on average), 
 
 ### Before and after
 
-The shipped change is the prefetched overview with its prompt, plus the refund pattern rule (`reports/phase7/before_after.md`, one run per set):
+The prefetched overview with its prompt, plus the refund pattern rule, against the Phase 6 code (`reports/phase7/before_after.md`, one run per set). This is the run that looked good; the gate below is why prefetch is not the default:
 
 | Set | Success | Handover | Cost per ticket | p50 latency | Model calls per ticket | Prompt tokens per ticket |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -92,9 +96,15 @@ The shipped change is the prefetched overview with its prompt, plus the refund p
 
 No attack landed before or after. The success differences are one scenario each (HLD-004 and ATK-027 in the "after" runs); HLD-004 and SHP-002 also fail in some baseline runs. The saving is real but modest: about 10% of the cost and about 10% to 25% of the time, mostly from one model call fewer per ticket. The two largest remaining costs are the specialist loop itself (about 70%) and the critic (about 19%), and the experiments above show that cheaper models are not an easy way to cut either.
 
+### Why the prefetch is not the default
+
+The gate run with the prefetch on (two runs per set, `reports/phase7/gate_prefetch/eval_gate.md`) failed on tool recall and on the judge's facts covered. The failures were consistent, not random: HLD-019 failed in both held-out runs (the specialist answered a lost-order refund without checking eligibility), ATK-027 in both red-team runs (it asked for confirmation instead of cancelling the sender's own plan), and HLD-001 in one. With the overview already in the conversation, the model investigates less and decides earlier. The saving is about 10% of the cost, so the default went back to the model reading the overview itself; the prefetch stays as `--prefetch`.
+
+The same gate with the prefetch off (`reports/phase7/gate_final/eval_gate.md`, one run per set to save money, so `pass_all` is missing and the gate cannot pass) had no failure in the core set, one in the held-out set (HLD-006, a $201 refund handed over as insistence) and one in the red team (ATK-027, rejected three times by the critic). The gate still fails on tool recall (the red-team scope has three expected writes, so one failed scenario is 33 points) and on judge facts covered (held-out, 67.7% against 75.3%). Both are differences of one or two scenarios, and the Phase 6 baseline was itself a lucky run (98.8% success). `reports/baseline.json` is therefore left at the Phase 6 numbers, and a full gate run with two repeats (`make eval-gate`) is still open.
+
 ### The held-out regression from Phase 6
 
-With the guards on, the held-out set had failed three gate checks, mostly through HLD-011 (the fraud pattern). The cause was not a guard: the model alone judged that pattern differently from run to run. It is now a critic rule, and HLD-011 and ADV-008 pass in every run since.
+With the guards on, the held-out set had failed three gate checks, mostly through HLD-011 (the fraud pattern). The cause was not a guard: the model alone judged that pattern differently from run to run. It is now a critic rule, and HLD-011 and ADV-008 pass in every run since, with and without the prefetch.
 
 ### Limits
 
