@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval eval-gate redteam judge-calibrate agent-eval api rag-index rag-eval up down
+.PHONY: setup test lint format migrate seed eval eval-gate redteam dashboard judge-calibrate agent-eval api rag-index rag-eval up down
 
 setup:
 	uv sync
@@ -37,6 +37,9 @@ eval-gate: up
 
 redteam: up
 	uv run python -m parley.evals.suite --profile security --repeats 3 --ablation-repeats 1 $(ARGS)
+
+dashboard:
+	uv run python -m parley.observability.dashboard $(TRACES) $(ARGS)
 
 judge-calibrate:
 	uv run python -m parley.evals.calibration $(ARGS)
