@@ -6,7 +6,9 @@ from parley.evals.agent_eval import (
     default_out,
     is_complete,
     needs_simulator,
+    parse_args,
     select_scenarios,
+    trace_path,
 )
 from parley.evals.loader import SCENARIO_SETS, load_scenarios, load_set
 from tests.test_eval_report import outcome
@@ -92,3 +94,9 @@ def test_the_simulator_is_needed_whenever_a_selected_scenario_is_a_dialogue() ->
     assert needs_simulator(load_set("dialogue"))
     assert needs_simulator(load_set("redteam"))
     assert not needs_simulator(select_scenarios(load_set("redteam"), ["ATK-001"], None, None))
+
+
+def test_spans_are_written_next_to_the_report_unless_switched_off() -> None:
+    path = trace_path(default_out("multi", "heldout"))
+    assert path.parent.name == "traces" and path.name == "agent_multi_heldout.jsonl"
+    assert parse_args([]).no_trace is False and parse_args(["--no-trace"]).no_trace is True
