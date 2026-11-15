@@ -7,6 +7,7 @@ import pytest
 from mcp import Client
 from sqlalchemy.orm import Session
 
+from parley.agent.toolbox import open_toolbox
 from parley.backend.services import Backend
 from parley.db.enums import OrderStatus, ShipmentStatus
 from parley.db.models import Order
@@ -79,3 +80,17 @@ def test_mcp_enforces_sender_scoping(session: Session, ctx: ToolContext) -> None
     other = make_order(session, make_customer(session, "bob@example.com"))
     is_error, payload = over_mcp(ctx, "get_order", {"order_id": other.id})
     assert is_error and payload["error_code"] == "access_denied"
+
+
+def test_compact_output_leaves_out_empty_fields_and_keeps_the_rest(session: Session) -> None:
+    async def fetch(compact: bool) -> str:
+        sender = make_customer(session, f"x{compact}@example.com")
+        ctx = ToolContext(Backend(session, lambda: NOW), sender.id, "T-1", compact_output=compact)
+        async with open_toolbox(default_registry(), ctx) as box:
+            _, text = await box.call("get_customer_overview", {})
+            return text
+
+    plain = asyncio.run(fetch(False))
+    compact = asyncio.run(fetch(True))
+    assert '"error_code":null' in plain and '"error_code"' not in compact
+    assert len(compact) < len(plain) and '"ok":true' in compact

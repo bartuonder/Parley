@@ -108,3 +108,7 @@ def test_each_role_of_the_graph_can_get_its_own_model_from_the_command_line() ->
     )
     assert (args.router_model, args.critic_model, args.responder_model) == ("r", "c", "p")
     assert parse_args([]).critic_model is None
+
+
+def test_compact_tool_output_is_an_option_and_off_by_default() -> None:
+    assert parse_args([]).compact is False and parse_args(["--compact"]).compact is True
