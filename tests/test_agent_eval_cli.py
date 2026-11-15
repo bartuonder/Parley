@@ -112,3 +112,7 @@ def test_each_role_of_the_graph_can_get_its_own_model_from_the_command_line() ->
 
 def test_compact_tool_output_is_an_option_and_off_by_default() -> None:
     assert parse_args([]).compact is False and parse_args(["--compact"]).compact is True
+
+
+def test_prefetching_the_overview_is_an_option_and_off_by_default() -> None:
+    assert parse_args([]).prefetch is False and parse_args(["--prefetch"]).prefetch is True

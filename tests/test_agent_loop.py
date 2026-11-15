@@ -129,3 +129,39 @@ def test_custom_system_prompt_and_notes_reach_the_model(ctx: ToolContext) -> Non
     assert system["content"] == "Custom rules."
     assert user["content"].endswith("Reviewer note: cite the policy.")
     assert "<ticket_body>" in user["content"]
+
+
+def test_prefetching_the_overview_puts_it_in_the_first_request_and_saves_a_model_turn(
+    session: Session, ctx: ToolContext
+) -> None:
+    delivered_order(session, ctx)
+    ctx.prefetch_overview = True
+    llm = ScriptedLLM([reply_turn("All good.")])
+    result = run(llm, ctx)
+    first = llm.requests[0]
+    assert [m["role"] for m in first] == ["system", "user", "assistant", "tool"]
+    assert first[2]["tool_calls"][0]["function"]["name"] == "get_customer_overview"
+    assert first[3]["tool_call_id"] == first[2]["tool_calls"][0]["id"]
+    assert "orders" in first[3]["content"]
+    assert [c.name for c in result.tool_calls] == ["get_customer_overview"]
+    assert result.steps == 1 and result.reply == "All good."
+
+
+def test_without_prefetch_the_conversation_starts_with_the_ticket_only(
+    session: Session, ctx: ToolContext
+) -> None:
+    llm = ScriptedLLM([reply_turn("Hello.")])
+    run(llm, ctx)
+    assert [m["role"] for m in llm.requests[0]] == ["system", "user"]
+
+
+def test_a_prefetched_overview_is_fenced_like_any_tool_output(
+    session: Session, ctx: ToolContext
+) -> None:
+    from parley.security.guards import GuardConfig
+
+    ctx.prefetch_overview = True
+    ctx.guards = GuardConfig()
+    llm = ScriptedLLM([reply_turn("Hi.")])
+    run(llm, ctx)
+    assert llm.requests[0][3]["content"].startswith("<<DATA id=")
