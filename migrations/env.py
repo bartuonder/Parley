@@ -6,6 +6,7 @@ from parley.db import models  # noqa: F401  (registers tables on the metadata)
 from parley.db.base import Base
 from parley.db.session import make_engine
 from parley.memory import tables as memory_tables  # noqa: F401
+from parley.observability import tables as trace_tables  # noqa: F401
 from parley.rag import tables  # noqa: F401
 
 config = context.config
