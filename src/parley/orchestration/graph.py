@@ -14,6 +14,7 @@ from parley.agent.ticket import Ticket
 from parley.memory.facts import decision_facts, facts_from_run
 from parley.memory.store import recall, recall_for_ticket, remember, render_memory
 from parley.observability.tracing import traced_node
+from parley.orchestration.classifier import ClassifierRouter
 from parley.orchestration.critic import review
 from parley.orchestration.executor import ExecutedAction, execute_proposals
 from parley.orchestration.responder import money, respond
@@ -67,6 +68,7 @@ class GraphDeps:
     switches: Switches = field(default_factory=Switches)
     critic_llm: LLMClient | None = None
     responder_llm: LLMClient | None = None
+    classifier: ClassifierRouter | None = None
 
 
 def _deps(config: RunnableConfig) -> GraphDeps:
@@ -90,9 +92,12 @@ async def triage(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     deps = _deps(config)
     if not deps.switches.route:
         return {"specialist": Specialist.BILLING.value, "route_raw": "fixed"}
-    decision = await route_ticket(
-        deps.router_llm, Ticket.model_validate(state["ticket"]), fence=deps.ctx.guards.spotlight
-    )
+    ticket = Ticket.model_validate(state["ticket"])
+    fence = deps.ctx.guards.spotlight
+    if deps.classifier is not None:
+        decision = await deps.classifier.route(ticket, fence=fence)
+    else:
+        decision = await route_ticket(deps.router_llm, ticket, fence=fence)
     return {
         "specialist": decision.specialist.value,
         "route_raw": decision.raw,

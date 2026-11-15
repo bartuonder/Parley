@@ -19,6 +19,7 @@ from parley.evals.tamper import TamperedRetriever
 from parley.evals.world import WorldIndex, build_world, render_text
 from parley.observability.llm import TracedLLM
 from parley.observability.tracing import span
+from parley.orchestration.classifier import ClassifierRouter
 from parley.orchestration.graph import Switches
 from parley.orchestration.runner import run_multi
 from parley.rag.retrieval import Retriever
@@ -43,6 +44,7 @@ class Architecture:
     router_llm_factory: LLMFactory | None = None
     critic_llm_factory: LLMFactory | None = None
     responder_llm_factory: LLMFactory | None = None
+    classifier: ClassifierRouter | None = None
     max_revisions: int = 2
     switches: Switches = field(default_factory=Switches)
     guards: GuardConfig = field(default_factory=GuardConfig)
@@ -147,6 +149,7 @@ async def _play(
                 switches=arch.switches,
                 critic_llm=_role(arch.critic_llm_factory, scenario, index),
                 responder_llm=_role(arch.responder_llm_factory, scenario, index),
+                classifier=arch.classifier,
             )
         return await run_ticket(
             llm,

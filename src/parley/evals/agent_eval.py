@@ -23,8 +23,10 @@ from parley.evals.schema import Scenario
 from parley.evals.scoring import ScenarioOutcome
 from parley.observability.exporters import JsonlExporter
 from parley.observability.tracing import telemetry
+from parley.orchestration.classifier import ClassifierRouter, RouterModel
 from parley.orchestration.graph import Switches
-from parley.rag.service import build_default_index, default_retriever
+from parley.rag.embedders import get_embedder
+from parley.rag.service import DEFAULT_EMBEDDING, build_default_index, default_retriever
 from parley.security.guards import parse_guards
 from parley.settings import PROJECT_ROOT, get_settings
 
@@ -45,6 +47,17 @@ def default_out(
     name += "" if guards == "on" else f"_guards_{guards}"
     suffix = "" if scenario_set == "core" else f"_{scenario_set}"
     return PROJECT_ROOT / "reports" / f"{name}{suffix}.json"
+
+
+def build_classifier(args: argparse.Namespace, router: LiteLLMClient) -> ClassifierRouter | None:
+    if args.router == "llm":
+        return None
+    return ClassifierRouter(
+        RouterModel.load(),
+        get_embedder(DEFAULT_EMBEDDING),
+        threshold=0.0 if args.router == "classifier" else args.router_threshold,
+        fallback=router if args.router == "hybrid" else None,
+    )
 
 
 def trace_path(report_path: Path) -> Path:
@@ -128,6 +141,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
         responder = LiteLLMClient(model=args.responder_model) if args.responder_model else None
         arch = Architecture(
             name="multi",
+            classifier=build_classifier(args, router),
             router_llm_factory=lambda scenario, index: router,
             critic_llm_factory=(lambda scenario, index: critic) if critic else None,
             responder_llm_factory=(lambda scenario, index: responder) if responder else None,
@@ -187,6 +201,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--guards", default="on", help="on, off, or no_<guard> to switch one defense off"
     )
+    parser.add_argument(
+        "--router", choices=["llm", "classifier", "hybrid"], default="llm", help="how tickets route"
+    )
+    parser.add_argument("--router-threshold", type=float, default=0.5)
     parser.add_argument("--router-model", help="model of the router, default PARLEY_ROUTER_MODEL")
     parser.add_argument("--critic-model", help="model of the critic, default the agent model")
     parser.add_argument("--responder-model", help="model of the responder, default the agent model")
@@ -240,6 +258,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "router_model": (args.router_model or settings.router_model)
         if args.arch == "multi"
         else None,
+        "router": args.router,
         "critic_model": args.critic_model,
         "responder_model": args.responder_model,
         "simulator_model": settings.simulator_model if needs_simulator(scenarios) else None,

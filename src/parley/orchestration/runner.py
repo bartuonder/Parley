@@ -8,6 +8,7 @@ from langgraph.types import Command
 from parley.agent.llm import LLMClient, Usage
 from parley.agent.result import AgentResult, EscalationRecord, StopReason, ToolInvocation
 from parley.agent.ticket import Ticket
+from parley.orchestration.classifier import ClassifierRouter
 from parley.orchestration.executor import ExecutedAction
 from parley.orchestration.graph import GraphDeps, Switches, build_graph
 from parley.tools.catalog import default_registry
@@ -28,6 +29,7 @@ async def run_multi(
     switches: Switches | None = None,
     critic_llm: LLMClient | None = None,
     responder_llm: LLMClient | None = None,
+    classifier: ClassifierRouter | None = None,
 ) -> AgentResult:
     """Run the multi-agent graph for one ticket; a paused approval still returns the reply."""
     started = time.perf_counter()
@@ -42,6 +44,7 @@ async def run_multi(
         switches=switches,
     )
     deps.critic_llm, deps.responder_llm = critic_llm, responder_llm
+    deps.classifier = classifier
     graph = build_graph(checkpointer or InMemorySaver())
     state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=_config(ticket, deps))
     return to_result(state, ticket, ctx, model, time.perf_counter() - started)
