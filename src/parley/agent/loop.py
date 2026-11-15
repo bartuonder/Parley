@@ -44,6 +44,12 @@ async def run_ticket(
     reply, stop, steps = "", StopReason.MAX_STEPS, 0
 
     async with open_toolbox(registry, ctx) as box:
+        if ctx.prefetch_overview and "get_customer_overview" in {s.name for s in registry.specs}:
+            invocation, text = await _invoke(box, OVERVIEW, "{}")
+            trace.append(invocation)
+            screen_tool_output(ctx, OVERVIEW, text)
+            content = wrap_untrusted("tool_output", text, fence) if fence else text
+            messages += _prefetched(content)
         while steps < max_steps:
             steps += 1
             response = await llm.complete(messages, box.schemas)
@@ -76,6 +82,23 @@ async def run_ticket(
         escalations=[EscalationRecord(reason=e.reason, summary=e.summary) for e in ctx.escalations],
         extras={"guard_events": list(ctx.guard_events)},
     )
+
+
+OVERVIEW = "get_customer_overview"
+PREFETCH_CALL_ID = "prefetch-overview"
+
+
+def _prefetched(content: str) -> list[Message]:
+    """The overview as if the model had asked for it, so the conversation stays well formed."""
+    call = {"name": OVERVIEW, "arguments": "{}"}
+    return [
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": PREFETCH_CALL_ID, "type": "function", "function": call}],
+        },
+        {"role": "tool", "tool_call_id": PREFETCH_CALL_ID, "content": content},
+    ]
 
 
 HANDOVER_NOTE = "A colleague from our team will follow up on this request."

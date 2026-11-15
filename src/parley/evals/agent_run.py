@@ -46,6 +46,7 @@ class Architecture:
     responder_llm_factory: LLMFactory | None = None
     classifier: ClassifierRouter | None = None
     compact_tools: bool = False
+    prefetch_overview: bool = False
     max_revisions: int = 2
     switches: Switches = field(default_factory=Switches)
     guards: GuardConfig = field(default_factory=GuardConfig)
@@ -137,6 +138,7 @@ async def _play(
             retriever=_retriever_for(scenario, retriever(session)),
             guards=arch.guards,
             compact_output=arch.compact_tools,
+            prefetch_overview=arch.prefetch_overview,
         )
         if arch.router_llm_factory is not None and arch.name == "multi":
             return await run_multi(

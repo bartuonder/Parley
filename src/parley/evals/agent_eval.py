@@ -134,7 +134,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
     model = args.model or settings.agent_model
     engine = recreate_eval_database()
     guards = parse_guards(args.guards)
-    arch = Architecture(guards=guards, compact_tools=args.compact)
+    arch = Architecture(guards=guards, compact_tools=args.compact, prefetch_overview=args.prefetch)
     if args.arch == "multi":
         router = LiteLLMClient(model=args.router_model or settings.router_model)
         critic = LiteLLMClient(model=args.critic_model) if args.critic_model else None
@@ -149,6 +149,7 @@ async def run(args: argparse.Namespace, scenarios: list[Scenario]) -> list[list[
             switches=ABLATIONS.get(args.ablate or "", Switches()),
             guards=guards,
             compact_tools=args.compact,
+            prefetch_overview=args.prefetch,
         )
     try:
         with session_scope(engine) as session:
@@ -206,6 +207,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--router", choices=["llm", "classifier", "hybrid"], default="llm", help="how tickets route"
     )
     parser.add_argument("--compact", action="store_true", help="leave empty fields out of tools")
+    parser.add_argument(
+        "--prefetch", action="store_true", help="read the customer overview before the first turn"
+    )
     parser.add_argument("--router-threshold", type=float, default=0.5)
     parser.add_argument("--router-model", help="model of the router, default PARLEY_ROUTER_MODEL")
     parser.add_argument("--critic-model", help="model of the critic, default the agent model")
@@ -262,6 +266,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         else None,
         "router": args.router,
         "compact_tools": args.compact,
+        "prefetch": args.prefetch,
         "critic_model": args.critic_model,
         "responder_model": args.responder_model,
         "simulator_model": settings.simulator_model if needs_simulator(scenarios) else None,
