@@ -66,3 +66,14 @@ def test_memory_is_included_only_when_present() -> None:
     assert "earlier tickets" not in plain
     assert "earlier tickets" in with_memory and "- refund denied twice" in with_memory
     assert "treat it as insistence" in with_memory and "treat it as insistence" not in plain
+
+
+def test_the_prefix_a_provider_can_cache_is_the_same_for_every_ticket() -> None:
+    first = specialist_prompt(Specialist.BILLING, date(2026, 6, 1))
+    second = specialist_prompt(Specialist.BILLING, date(2026, 6, 1))
+    assert first == second
+    with_memory = specialist_prompt(Specialist.BILLING, date(2026, 6, 1), "- refund denied twice")
+    shared = with_memory.index("What is known about this customer")
+    assert with_memory[:shared] == first[:shared]
+    schemas = [s.json_schema() for s in specialist_registry(Specialist.BILLING).specs]
+    assert schemas == [s.json_schema() for s in specialist_registry(Specialist.BILLING).specs]
