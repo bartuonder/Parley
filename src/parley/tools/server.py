@@ -32,7 +32,11 @@ def build_server(registry: ToolRegistry, ctx: ToolContext) -> Server[None]:
     ) -> types.CallToolResult:
         result = registry.call(ctx, params.name, params.arguments or {})
         return types.CallToolResult(
-            content=[types.TextContent(type="text", text=result.model_dump_json())],
+            content=[
+                types.TextContent(
+                    type="text", text=result.model_dump_json(exclude_none=ctx.compact_output)
+                )
+            ],
             structured_content=result.model_dump(mode="json"),
             is_error=not result.ok,
         )

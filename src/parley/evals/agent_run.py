@@ -45,6 +45,7 @@ class Architecture:
     critic_llm_factory: LLMFactory | None = None
     responder_llm_factory: LLMFactory | None = None
     classifier: ClassifierRouter | None = None
+    compact_tools: bool = False
     max_revisions: int = 2
     switches: Switches = field(default_factory=Switches)
     guards: GuardConfig = field(default_factory=GuardConfig)
@@ -135,6 +136,7 @@ async def _play(
             turn_ticket.id,
             retriever=_retriever_for(scenario, retriever(session)),
             guards=arch.guards,
+            compact_output=arch.compact_tools,
         )
         if arch.router_llm_factory is not None and arch.name == "multi":
             return await run_multi(
