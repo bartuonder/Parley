@@ -1,4 +1,5 @@
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -8,6 +9,7 @@ from parley.orchestration.critic import (
     CRITIC_PROMPT,
     LEGAL_THREAT,
     Verdict,
+    recent_refunds,
     render_evidence,
     review,
     rule_issues,
@@ -129,3 +131,64 @@ def test_cancelling_several_plans_needs_a_plural_request() -> None:
     assert rule_issues(plural, two) == []
     assert rule_issues(vague, two[:1]) == []
     assert rule_issues(vague, [two[0], Proposal(CANCEL, {"subscription_id": 1})]) == []
+
+
+NOW_FOR_FRAUD = datetime(2026, 6, 1, 12, tzinfo=UTC)
+
+
+def overview_with_refunds(*days_ago: int, status: str = "processed") -> ToolInvocation:
+    refunds = [
+        {
+            "id": n,
+            "amount_cents": 1000,
+            "status": status,
+            "created_at": (NOW_FOR_FRAUD - timedelta(days=d)).isoformat(),
+        }
+        for n, d in enumerate(days_ago, start=1)
+    ]
+    return ToolInvocation(
+        name="get_customer_overview",
+        arguments={},
+        ok=True,
+        output={"orders": [{"id": 1, "refunds": refunds}], "invoices": []},
+    )
+
+
+def refund_proposal() -> Proposal:
+    return Proposal(
+        "issue_refund", {"target": "order", "target_id": 3, "amount_cents": 500, "reason": "x"}
+    )
+
+
+def test_refunds_in_the_last_thirty_days_are_counted_once_each() -> None:
+    call = overview_with_refunds(5, 20, 29, 45)
+    assert recent_refunds([call, call], NOW_FOR_FRAUD) == 3
+    assert recent_refunds([overview_with_refunds(5, status="rejected")], NOW_FOR_FRAUD) == 0
+    failed = call.model_copy(update={"ok": False})
+    assert recent_refunds([failed], NOW_FOR_FRAUD) == 0
+
+
+def test_a_third_refund_in_a_month_must_go_to_a_human_instead() -> None:
+    vague = Ticket(id="T", sender_email="a@x.io", subject="Refund", body="It never arrived.")
+    calls = [overview_with_refunds(25, 9)]
+    issues = rule_issues(vague, [refund_proposal()], calls, NOW_FOR_FRAUD)
+    assert len(issues) == 1 and "POL-ESC-002" in issues[0] and "2 refunds" in issues[0]
+    assert rule_issues(vague, [refund_proposal()], [overview_with_refunds(9)], NOW_FOR_FRAUD) == []
+    assert rule_issues(vague, [], calls, NOW_FOR_FRAUD) == []
+    assert rule_issues(vague, [refund_proposal()], calls) == []
+
+
+def test_the_pattern_is_rejected_without_asking_the_model() -> None:
+    llm = ScriptedLLM([])
+    ticket = Ticket(id="T", sender_email="a@x.io", subject="Refund", body="Again.")
+    verdict = asyncio.run(
+        review(
+            llm,
+            ticket,
+            [refund_proposal()],
+            "Draft",
+            [overview_with_refunds(25, 9)],
+            now=NOW_FOR_FRAUD,
+        )
+    )
+    assert not verdict.approved and verdict.source == "rules" and llm.requests == []
