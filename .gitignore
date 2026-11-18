@@ -19,3 +19,8 @@ build/
 .cache/
 reports/**/traces/
 reports/phase7/*.json
+
+console/node_modules/
+console/.next/
+console/next-env.d.ts
+console/*.tsbuildinfo
