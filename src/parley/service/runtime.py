@@ -45,8 +45,11 @@ def session_factory(engine: Engine) -> SessionFactory:
 async def open_runtime(settings: Settings | None = None) -> AsyncIterator[Runtime]:
     """Engine, tracing, checkpointer and service for one process; closed on exit."""
     settings = settings or get_settings()
-    engine = make_engine()
-    telemetry.configure([PostgresExporter(engine)], capture_content=settings.trace_content)
+    slots = settings.max_concurrent_tickets
+    engine = make_engine(pool_size=2 * slots + 4, max_overflow=slots)
+    telemetry.configure(
+        [PostgresExporter(engine)], capture_content=settings.trace_content, batch=True
+    )
     llm, router = build_clients(settings)
     live = settings.llm_mode == "live"
     sessions = session_factory(engine)
@@ -64,6 +67,7 @@ async def open_runtime(settings: Settings | None = None) -> AsyncIterator[Runtim
                     max_revisions=settings.agent_max_revisions,
                 ),
                 now=utcnow,
+                max_concurrency=slots,
                 retriever=default_retriever if live else (lambda _: None),
             )
             try:

@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor, SpanExporter
 from opentelemetry.trace import Span, StatusCode, get_current_span
 
 TRACER_NAME = "parley"
@@ -50,12 +50,22 @@ class Telemetry:
         self._provider: TracerProvider | None = None
         self.capture_content = False
 
-    def configure(self, exporters: Sequence[SpanExporter], capture_content: bool = False) -> None:
+    def configure(
+        self,
+        exporters: Sequence[SpanExporter],
+        capture_content: bool = False,
+        batch: bool = False,
+    ) -> None:
+        """Send spans to exporters; `batch` exports from a background thread, off the caller."""
         self.shutdown()
         self.capture_content = capture_content
         provider = TracerProvider()
         for exporter in exporters:
-            provider.add_span_processor(SimpleSpanProcessor(exporter))
+            provider.add_span_processor(
+                BatchSpanProcessor(exporter, schedule_delay_millis=500)
+                if batch
+                else SimpleSpanProcessor(exporter)
+            )
         self._provider = provider
 
     def shutdown(self) -> None:

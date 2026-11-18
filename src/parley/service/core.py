@@ -71,6 +71,7 @@ class TicketService:
         now: Clock,
         retriever: RetrieverFactory = lambda _: None,
         guards: GuardConfig | None = None,
+        max_concurrency: int = 8,
     ) -> None:
         self._sessions = sessions
         self._llm = TracedLLM(llm)
@@ -81,6 +82,7 @@ class TicketService:
         self._retriever = retriever
         self._guards = guards or GuardConfig()
         self._tasks: set[asyncio.Task[None]] = set()
+        self._slots = asyncio.Semaphore(max_concurrency)
 
     async def submit(self, new: NewTicket) -> ServiceTicketRow:
         """Store a ticket and start working on it in the background."""
@@ -114,6 +116,10 @@ class TicketService:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
     async def process(self, ticket_id: str) -> None:
+        async with self._slots:
+            await self._process(ticket_id)
+
+    async def _process(self, ticket_id: str) -> None:
         with self._sessions() as session:
             row = self._get(session, ticket_id)
             ticket = _ticket_of(row)
@@ -138,6 +144,10 @@ class TicketService:
 
     async def decide(self, ticket_id: str, decisions: dict[str, bool]) -> ServiceTicketRow:
         """Apply a human decision to the refunds of a waiting ticket and finish it."""
+        async with self._slots:
+            return await self._decide(ticket_id, decisions)
+
+    async def _decide(self, ticket_id: str, decisions: dict[str, bool]) -> ServiceTicketRow:
         with self._sessions() as session:
             row = self._get(session, ticket_id)
             if row.status != AWAITING_APPROVAL:

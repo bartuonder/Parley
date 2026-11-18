@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     llm_mode: Literal["live", "simulated"] = "live"
     simulated_latency_s: float = Field(default=0.0, ge=0, le=30)
     trace_content: bool = True
+    max_concurrent_tickets: int = Field(default=8, ge=1, le=64)
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
 
     @field_validator("api_key", mode="before")

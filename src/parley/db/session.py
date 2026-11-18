@@ -12,9 +12,16 @@ def to_driver_url(url: str) -> str:
     return url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 
-def make_engine(url: str | None = None) -> Engine:
+def make_engine(
+    url: str | None = None, pool_size: int | None = None, max_overflow: int | None = None
+) -> Engine:
     raw = url if url is not None else str(get_settings().database_url)
-    return create_engine(to_driver_url(raw), pool_pre_ping=True)
+    pool: dict[str, int] = {}
+    if pool_size is not None:
+        pool["pool_size"] = pool_size
+    if max_overflow is not None:
+        pool["max_overflow"] = max_overflow
+    return create_engine(to_driver_url(raw), pool_pre_ping=True, **pool)
 
 
 @contextmanager

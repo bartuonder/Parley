@@ -29,7 +29,12 @@ APPROVE = '{"approved": true, "issues": []}'
 LIMITS = Limits(model="scripted", max_steps=8, max_cost_usd=1.0, max_revisions=2)
 
 
-def service(session: Session, llm: LLMClient, router: LLMClient | None = None) -> TicketService:
+def service(
+    session: Session,
+    llm: LLMClient,
+    router: LLMClient | None = None,
+    max_concurrency: int = 8,
+) -> TicketService:
     @contextmanager
     def sessions() -> Iterator[Session]:
         yield session
@@ -41,6 +46,7 @@ def service(session: Session, llm: LLMClient, router: LLMClient | None = None) -
         checkpointer=InMemorySaver(),
         limits=LIMITS,
         now=lambda: NOW + timedelta(days=10),
+        max_concurrency=max_concurrency,
     )
 
 
@@ -139,3 +145,31 @@ def test_a_crashing_model_marks_the_ticket_failed_with_the_reason(session: Sessi
     assert row.error is not None and "provider down" in row.error
     kinds = [e.kind for e in svc.events_after(row.id)]
     assert kinds[-1] == "failed"
+
+
+class GatedLLM(SimulatedLLM):
+    def __init__(self) -> None:
+        super().__init__()
+        self.gate = asyncio.Event()
+
+    async def complete(self, messages: list[Message], tools: list[dict[str, Any]]) -> LLMResponse:
+        await self.gate.wait()
+        return await super().complete(messages, tools)
+
+
+def test_only_as_many_tickets_run_at_once_as_there_are_slots(session: Session) -> None:
+    make_customer(session, "ada@example.com")
+    llm = GatedLLM()
+    svc = service(session, llm, llm, max_concurrency=1)
+
+    async def go() -> list[str]:
+        first = await svc.submit(new("First"))
+        second = await svc.submit(new("Second"))
+        await asyncio.sleep(0.2)
+        mid = [svc.get_ticket(t.id).status for t in (first, second)]  # type: ignore[union-attr]
+        llm.gate.set()
+        await svc.wait_idle()
+        end = [svc.get_ticket(t.id).status for t in (first, second)]  # type: ignore[union-attr]
+        return [*mid, *end]
+
+    assert asyncio.run(go()) == ["running", "queued", RESOLVED, RESOLVED]
