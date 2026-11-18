@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval eval-gate redteam dashboard judge-calibrate agent-eval api serve serve-sim rag-index rag-eval up down
+.PHONY: setup test lint format migrate seed eval eval-gate redteam dashboard judge-calibrate agent-eval api serve serve-sim stack stack-down console-install console-dev console-check rag-index rag-eval up down
 
 setup:
 	uv sync
@@ -55,6 +55,21 @@ serve: up migrate
 
 serve-sim: up migrate
 	PARLEY_LLM_MODE=simulated PARLEY_SIMULATED_LATENCY_S=0.4 uv run python -m parley.service $(ARGS)
+
+stack:
+	docker compose --profile app up --build -d --wait
+
+stack-down:
+	docker compose --profile app down
+
+console-install:
+	cd console && npm ci
+
+console-dev:
+	cd console && npm run dev
+
+console-check:
+	cd console && npm run lint && npm run typecheck && npm test && npm run build
 
 rag-index: up migrate
 	uv run python -m parley.rag
