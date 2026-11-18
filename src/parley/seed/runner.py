@@ -18,6 +18,7 @@ from parley.seed.orders import generate_orders
 from parley.seed.refunds import generate_refunds
 from parley.seed.subscriptions import generate_subscriptions
 from parley.seed.tickets import generate_tickets
+from parley.service.tables import SERVICE_TABLES
 
 
 @dataclass
@@ -44,7 +45,7 @@ def world_tables() -> list[Table]:
     return [
         t
         for t in Base.metadata.sorted_tables
-        if t.name not in INDEX_TABLES | MEMORY_TABLES | TRACE_TABLES
+        if t.name not in INDEX_TABLES | MEMORY_TABLES | TRACE_TABLES | SERVICE_TABLES
     ]
 
 

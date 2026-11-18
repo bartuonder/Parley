@@ -8,6 +8,7 @@ from parley.db.session import make_engine
 from parley.memory import tables as memory_tables  # noqa: F401
 from parley.observability import tables as trace_tables  # noqa: F401
 from parley.rag import tables  # noqa: F401
+from parley.service import tables as service_tables  # noqa: F401
 
 config = context.config
 
