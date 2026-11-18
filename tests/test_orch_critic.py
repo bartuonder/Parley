@@ -192,3 +192,10 @@ def test_the_pattern_is_rejected_without_asking_the_model() -> None:
         )
     )
     assert not verdict.approved and verdict.source == "rules" and llm.requests == []
+
+
+def test_the_critic_is_told_not_to_list_correct_points_or_ask_for_rewording() -> None:
+    from parley.orchestration.critic import CRITIC_PROMPT
+
+    assert "Never list a point that is already correct" in CRITIC_PROMPT
+    assert "never ask for different wording" in CRITIC_PROMPT

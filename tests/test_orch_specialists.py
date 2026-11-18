@@ -85,3 +85,10 @@ def test_with_a_prefetched_overview_the_prompt_says_it_is_already_there() -> Non
     assert "then call get_customer_overview" in plain and "do not call it again" not in plain
     assert "do not call it again" in ready and "then call get_customer_overview" not in ready
     assert "{" not in ready and "}" not in ready
+
+
+def test_the_prompt_keeps_large_refunds_and_clear_requests_out_of_handovers_and_questions() -> None:
+    text = specialist_prompt(Specialist.BILLING, date(2026, 6, 1))
+    assert "never propose a handover just because of its size" in text
+    assert "do not ask the customer to confirm a request they have already made" in text
+    assert "still propose what the sender is entitled to" in text
