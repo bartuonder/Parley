@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -11,11 +12,14 @@ from parley.backend.services import (
     NotEligibleError,
     NotFoundError,
 )
-from parley.observability.tracing import span
+from parley.observability.tracing import span, telemetry
 from parley.security.guards import LOCK_MESSAGE, LOCKED_TOOLS
+from parley.security.redact import redact
 from parley.tools.access import AccessDeniedError
 from parley.tools.context import ToolContext
 from parley.tools.permissions import MUTATING, Permission
+
+CONTENT_LIMIT = 4000
 
 
 class ToolUnavailableError(Exception):
@@ -71,6 +75,8 @@ class ToolRegistry:
         with span(f"tool.{name}", "tool", tool=name) as handle:
             result = self._call(ctx, name, arguments)
             handle.set(ok=result.ok, error_code=result.error_code)
+            if telemetry.capture_content:
+                handle.set(arguments=_content(arguments), output=_content(result.model_dump()))
             return result
 
     def _call(self, ctx: ToolContext, name: str, arguments: dict[str, Any]) -> ToolResult:
@@ -109,6 +115,12 @@ def _run(ctx: ToolContext, spec: ToolSpec[Any], params: ToolParams) -> BaseModel
         output = spec.handler(ctx, params)
     session.commit()
     return output
+
+
+def _content(value: Any) -> str:
+    """Tool arguments or output for a trace: personal data masked, long text cut."""
+    text = redact(json.dumps(value, default=str, separators=(",", ":")))
+    return text if len(text) <= CONTENT_LIMIT else text[:CONTENT_LIMIT] + "..."
 
 
 def _summarize(exc: ValidationError) -> str:

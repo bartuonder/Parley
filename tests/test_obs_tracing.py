@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
@@ -126,3 +127,38 @@ def test_the_postgres_exporter_stores_spans_outside_the_callers_transaction(engi
         for row in rows:
             session.delete(row)
         session.commit()
+
+
+def attributes_of(finished: ReadableSpan) -> dict[str, object]:
+    return dict(finished.attributes or {})
+
+
+def test_tool_content_is_recorded_only_on_request_and_with_personal_data_masked(
+    session: Session,
+) -> None:
+    from parley.backend.services import Backend
+    from parley.tools.context import ToolContext
+    from parley.tools.read import READ_TOOLS
+    from parley.tools.registry import ToolRegistry
+    from tests.factories import NOW, make_customer
+
+    sender = make_customer(session, "ada@example.com")
+    ctx = ToolContext(Backend(session, lambda: NOW), sender.id, "T-1")
+    registry = ToolRegistry(READ_TOOLS)
+
+    plain = InMemorySpanExporter()
+    telemetry.configure([plain])
+    registry.call(ctx, "get_customer_overview", {})
+    telemetry.shutdown()
+    assert "output" not in attributes_of(plain.get_finished_spans()[0])
+
+    kept = InMemorySpanExporter()
+    telemetry.configure([kept], capture_content=True)
+    registry.call(ctx, "get_order", {"order_id": 999999})
+    registry.call(ctx, "get_customer_overview", {})
+    telemetry.shutdown()
+    assert telemetry.capture_content is False
+    first, second = (attributes_of(s) for s in kept.get_finished_spans())
+    assert first["arguments"] == '{"order_id":999999}'
+    assert "not_found" in str(first["output"])
+    assert "ada@example.com" not in str(second["output"])

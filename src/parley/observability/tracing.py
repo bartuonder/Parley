@@ -48,9 +48,11 @@ class Telemetry:
 
     def __init__(self) -> None:
         self._provider: TracerProvider | None = None
+        self.capture_content = False
 
-    def configure(self, exporters: Sequence[SpanExporter]) -> None:
+    def configure(self, exporters: Sequence[SpanExporter], capture_content: bool = False) -> None:
         self.shutdown()
+        self.capture_content = capture_content
         provider = TracerProvider()
         for exporter in exporters:
             provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -60,6 +62,7 @@ class Telemetry:
         if self._provider is not None:
             self._provider.shutdown()
             self._provider = None
+        self.capture_content = False
 
     @property
     def enabled(self) -> bool:
