@@ -71,5 +71,5 @@ This has not been deployed to a cloud provider: no account or credentials were u
 
 - No login in the console; one shared API key.
 - The graph's database access is synchronous, so one process serves a few concurrent tickets well and a large number only through the bound above; scale by running more API processes.
-- The HTTP service ran end to end with the real model on a single ticket (a return question: 4 model calls plus the router and critic, 8.6 s, $0.0037, the policy search and the trace with tool content working) and under load only in simulated mode. A load test with a real model was not run; it would be limited by the provider's rate limits and would cost money.
+- The HTTP service ran end to end with the real model on a single ticket (a return question: 7 model calls including the router and critic, 8.6 s, $0.0037, the policy search and the trace with tool content working) and under load only in simulated mode. A load test with a real model was not run; it would be limited by the provider's rate limits and would cost money.
 - Console behavior was checked by component tests, a production build and requests through its proxy; it was not opened in a browser during development.
