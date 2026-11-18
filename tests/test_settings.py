@@ -116,3 +116,17 @@ def test_router_model_and_revision_limit(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setenv("PARLEY_AGENT_MAX_REVISIONS", "9")
     with pytest.raises(ValidationError):
         build()
+
+
+def test_production_needs_an_api_key_and_a_real_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
+    monkeypatch.setenv("PARLEY_ENV", "prod")
+    with pytest.raises(ValidationError, match="API_KEY"):
+        build()
+    monkeypatch.setenv("PARLEY_API_KEY", "k")
+    assert build().api_key is not None
+    monkeypatch.setenv("PARLEY_LLM_MODE", "simulated")
+    with pytest.raises(ValidationError, match="LLM_MODE"):
+        build()
+    monkeypatch.setenv("PARLEY_ENV", "dev")
+    assert build().llm_mode == "simulated"

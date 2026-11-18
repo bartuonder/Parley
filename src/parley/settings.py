@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     simulator_model: str = "gpt-4.1-mini"
     judge_model: str = "gpt-4.1"
     fixed_now: datetime | None = None
+    api_key: SecretStr | None = Field(default=None, repr=False)
+    llm_mode: Literal["live", "simulated"] = "live"
+    simulated_latency_s: float = Field(default=0.0, ge=0, le=30)
+    trace_content: bool = True
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
 
     @field_validator("model_cache_dir")
@@ -40,6 +44,14 @@ class Settings(BaseSettings):
     def no_pinned_clock_in_prod(self) -> Self:
         if self.env == "prod" and self.fixed_now is not None:
             raise ValueError("PARLEY_FIXED_NOW must not be set when PARLEY_ENV is prod")
+        return self
+
+    @model_validator(mode="after")
+    def prod_needs_a_key_and_a_real_model(self) -> Self:
+        if self.env == "prod" and self.api_key is None:
+            raise ValueError("PARLEY_API_KEY must be set when PARLEY_ENV is prod")
+        if self.env == "prod" and self.llm_mode != "live":
+            raise ValueError("PARLEY_LLM_MODE must be live when PARLEY_ENV is prod")
         return self
 
 
