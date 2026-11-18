@@ -334,6 +334,8 @@ def main() -> None:
     parser.add_argument("--baseline", type=Path, default=BASELINE_PATH)
     parser.add_argument("--enforce", action="store_true", help="exit 1 when the gate fails")
     args = parser.parse_args()
+    if args.profile == "gate" and args.repeats < 2:
+        parser.error("the gate needs --repeats 2 or more because it checks pass^k")
 
     if args.profile == "security":
         security, spent = run_suite(security_plan(args.repeats, args.ablation_repeats), args.budget)

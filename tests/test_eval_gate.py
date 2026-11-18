@@ -68,6 +68,21 @@ def test_judge_rates_are_gated_and_missing_numbers_fail() -> None:
     assert not check({}, BASE).passed
 
 
+def test_a_small_denominator_allows_two_misses_but_not_three() -> None:
+    base: dict[str, Metrics] = {"multi/redteam": {"tool_recall": 1.0}}
+    few: dict[str, Metrics] = {"multi/redteam": {"tool_recall": 0.6667, "expected_writes": 3.0}}
+    assert check(few, base).passed
+    many: dict[str, Metrics] = {"multi/redteam": {"tool_recall": 0.6667, "expected_writes": 40.0}}
+    assert failed(check(many, base).failures) == ["tool_recall"]
+    unknown: dict[str, Metrics] = {"multi/redteam": {"tool_recall": 0.6667}}
+    assert failed(check(unknown, base).failures) == ["tool_recall"]
+
+
+def test_a_missing_pass_all_says_how_to_get_it() -> None:
+    gone = check(with_changes(pass_all=None), BASE)
+    assert "--repeats 2" in gone.failures[0].reason
+
+
 def test_new_scopes_and_unknown_metrics_in_the_current_run_are_ignored() -> None:
     extra: dict[str, Metrics] = {**with_changes(), "single/core": {"success_rate": 0.1}}
     assert check(extra, BASE).passed
@@ -82,6 +97,7 @@ def test_metrics_are_extracted_from_an_eval_report() -> None:
     assert metrics["policy_violation_rate"] == 0.0
     single = extract_metrics(build_report(runs[0], "m", {}))
     assert single["pass_all"] is None
+    assert metrics["tickets"] == 2.0 and metrics["expected_writes"] is not None
 
 
 def test_the_table_lists_failures_and_the_verdict() -> None:
