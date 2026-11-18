@@ -110,6 +110,21 @@ class TicketService:
         task.add_done_callback(self._tasks.discard)
         return row
 
+    def recover(self) -> int:
+        """Fail tickets a stopped process left half done, so none stays 'running' forever."""
+        with self._sessions() as session:
+            stale = list(
+                session.scalars(
+                    select(ServiceTicketRow).where(ServiceTicketRow.status.in_([QUEUED, RUNNING]))
+                )
+            )
+            for row in stale:
+                row.error = "interrupted by a restart"
+                self._set_status(session, row, FAILED)
+                self._event(session, row.id, "failed", {"error": row.error})
+            session.commit()
+            return len(stale)
+
     async def wait_idle(self) -> None:
         """Wait for every running ticket; used by tests and a clean shutdown."""
         while self._tasks:

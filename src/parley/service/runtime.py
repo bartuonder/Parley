@@ -70,6 +70,7 @@ async def open_runtime(settings: Settings | None = None) -> AsyncIterator[Runtim
                 max_concurrency=slots,
                 retriever=default_retriever if live else (lambda _: None),
             )
+            service.recover()
             try:
                 yield Runtime(service, sessions)
             finally:

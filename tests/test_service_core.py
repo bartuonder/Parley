@@ -21,7 +21,7 @@ from parley.service.core import (
     event_dicts,
 )
 from parley.service.simulated import SimulatedLLM
-from parley.service.tables import AWAITING_APPROVAL, FAILED, RESOLVED
+from parley.service.tables import AWAITING_APPROVAL, FAILED, RESOLVED, ServiceTicketRow
 from tests.factories import NOW, make_customer, make_item, make_order, make_shipment
 from tests.fakes import ScriptedLLM, call_turn, reply_turn
 
@@ -130,6 +130,32 @@ def test_a_large_refund_waits_in_the_queue_and_a_decision_finishes_it(session: S
     assert done.pending == []
     with pytest.raises(NotAwaitingApprovalError):
         asyncio.run(svc.decide(ticket_id, {refund_id: True}))
+
+
+def test_tickets_left_running_by_a_stopped_process_are_failed_on_recovery(
+    session: Session,
+) -> None:
+    make_customer(session, "ada@example.com")
+    svc = service(session, SimulatedLLM())
+    done = run(svc, new("Done"))
+    row = ServiceTicketRow(
+        id="T-stuck",
+        sender_email="ada@example.com",
+        subject="Stuck",
+        body="x",
+        status="running",
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    session.add(row)
+    session.flush()
+    assert svc.recover() == 1
+    stuck, finished = svc.get_ticket("T-stuck"), svc.get_ticket(done)
+    assert (
+        stuck is not None and stuck.status == FAILED and stuck.error == "interrupted by a restart"
+    )
+    assert finished is not None and finished.status == RESOLVED
+    assert svc.recover() == 0
 
 
 class BrokenLLM:
