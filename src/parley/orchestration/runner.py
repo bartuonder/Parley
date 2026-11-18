@@ -1,4 +1,5 @@
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -13,6 +14,8 @@ from parley.orchestration.executor import ExecutedAction
 from parley.orchestration.graph import GraphDeps, Switches, build_graph
 from parley.tools.catalog import default_registry
 from parley.tools.context import ToolContext
+
+NodeCallback = Callable[[str, dict[str, Any]], Awaitable[None]]
 
 
 async def run_multi(
@@ -30,6 +33,7 @@ async def run_multi(
     critic_llm: LLMClient | None = None,
     responder_llm: LLMClient | None = None,
     classifier: ClassifierRouter | None = None,
+    on_node: NodeCallback | None = None,
 ) -> AgentResult:
     """Run the multi-agent graph for one ticket; a paused approval still returns the reply."""
     started = time.perf_counter()
@@ -46,7 +50,7 @@ async def run_multi(
     deps.critic_llm, deps.responder_llm = critic_llm, responder_llm
     deps.classifier = classifier
     graph = build_graph(checkpointer or InMemorySaver())
-    state = await graph.ainvoke({"ticket": ticket.model_dump()}, config=_config(ticket, deps))
+    state = await _drive(graph, {"ticket": ticket.model_dump()}, _config(ticket, deps), on_node)
     return to_result(state, ticket, ctx, model, time.perf_counter() - started)
 
 
@@ -62,6 +66,7 @@ async def resume_multi(
     max_cost_usd: float,
     max_revisions: int,
     checkpointer: BaseCheckpointSaver[Any],
+    on_node: NodeCallback | None = None,
 ) -> AgentResult:
     """Apply human decisions to a paused ticket; the result carries the follow-up message."""
     started = time.perf_counter()
@@ -75,8 +80,28 @@ async def resume_multi(
         max_revisions=max_revisions,
     )
     graph = build_graph(checkpointer)
-    state = await graph.ainvoke(Command(resume=decisions), config=_config(ticket, deps))
+    state = await _drive(graph, Command(resume=decisions), _config(ticket, deps), on_node)
     return to_result(state, ticket, ctx, model, time.perf_counter() - started)
+
+
+async def _drive(
+    graph: Any, payload: Any, config: Any, on_node: NodeCallback | None
+) -> dict[str, Any]:
+    """Run the graph to its end or pause; with a callback, report every finished node."""
+    if on_node is None:
+        state: dict[str, Any] = await graph.ainvoke(payload, config=config)
+        return state
+    paused = False
+    async for chunk in graph.astream(payload, config=config, stream_mode="updates"):
+        for node, update in chunk.items():
+            if node == "__interrupt__":
+                paused = True
+            else:
+                await on_node(node, update if isinstance(update, dict) else {})
+    state = dict((await graph.aget_state(config)).values)
+    if paused:
+        state["__interrupt__"] = True
+    return state
 
 
 def _deps(
