@@ -159,3 +159,14 @@ Showing the specialist the notes was not enough: it read them and still refused 
 ## Limits of the numbers
 
 These are the Phase 4 limits; Phase 5 closed most of them. The harness (held-out set, user simulator, judge, `pass^4`, regression gate, ablation) and its results are in `EVAL.md`, which supersedes the numbers above. What is still open: one model for every role, small sets (31 held-out and 14 dialogue scenarios), a judge calibrated on labels by the assistant that built the harness, and a claimed-action metric that is still a sentence-level pattern match.
+
+## Options added in Phase 7 and 8
+
+None of these change the default behavior; `docs/OBSERVABILITY.md` has the measurements behind each.
+
+- `--prefetch`: read the customer overview before the first model turn. About 10% cheaper, but the specialist investigates less and two scenarios failed in every run, so it is off.
+- `--router hybrid|classifier`: route with a softmax classifier over ticket embeddings, falling back to the model below a confidence threshold. Saves half a second, broke a cancellation scenario.
+- `--router-model`, `--critic-model`, `--responder-model`: a model per role. Cheaper or larger models for the critic and responder lost on cost, time or success.
+- `--compact`: leave empty fields out of tool output. No measurable effect.
+- The critic has a deterministic rule for the fraud pattern (two refunds in the last 30 days and a new refund request go to a human).
+- The ticket service (`docs/SERVICE.md`) runs the same graph behind an HTTP API, with a node callback for live progress.
