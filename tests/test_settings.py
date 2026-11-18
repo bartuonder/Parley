@@ -121,6 +121,7 @@ def test_router_model_and_revision_limit(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_production_needs_an_api_key_and_a_real_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PARLEY_DATABASE_URL", DB_URL)
     monkeypatch.setenv("PARLEY_ENV", "prod")
+    monkeypatch.setenv("PARLEY_API_KEY", "  ")
     with pytest.raises(ValidationError, match="API_KEY"):
         build()
     monkeypatch.setenv("PARLEY_API_KEY", "k")

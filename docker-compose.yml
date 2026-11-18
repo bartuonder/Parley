@@ -16,5 +16,41 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      PARLEY_ENV: ${PARLEY_ENV:-dev}
+      PARLEY_DATABASE_URL: postgresql://${POSTGRES_USER:-parley}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-parley}
+      PARLEY_LLM_MODE: ${PARLEY_LLM_MODE:-simulated}
+      PARLEY_SIMULATED_LATENCY_S: ${PARLEY_SIMULATED_LATENCY_S:-0.3}
+      PARLEY_LLM_API_KEY: ${PARLEY_LLM_API_KEY:-}
+      PARLEY_API_KEY: ${PARLEY_API_KEY:?set PARLEY_API_KEY in .env}
+      PARLEY_FIXED_NOW: ${PARLEY_FIXED_NOW:-2026-06-01T12:00:00+00:00}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PARLEY_API_PORT:-8000}:8000"
+    volumes:
+      - modelcache:/app/.cache
+
+  console:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: docker/console.Dockerfile
+    environment:
+      PARLEY_API_URL: http://api:8000
+      PARLEY_API_KEY: ${PARLEY_API_KEY:?set PARLEY_API_KEY in .env}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${PARLEY_CONSOLE_PORT:-3000}:3000"
+
 volumes:
   pgdata:
+  modelcache:

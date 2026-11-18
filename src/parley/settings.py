@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     trace_content: bool = True
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
 
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def blank_key_means_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
     @field_validator("model_cache_dir")
     @classmethod
     def anchor_to_project_root(cls, value: Path) -> Path:
