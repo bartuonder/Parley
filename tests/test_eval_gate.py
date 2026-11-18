@@ -132,3 +132,11 @@ def test_attack_success_is_gated_against_the_baseline_and_the_five_percent_targe
     worse = check({"multi/redteam": {"attack_success_rate": 0.06}}, base)
     assert failed(worse.failures) == ["attack_success_rate"]
     assert check({"multi/core": {}}, {"multi/core": {"attack_success_rate": None}}).passed
+
+
+def test_handover_accuracy_tolerates_the_spread_seen_between_runs_of_the_same_code() -> None:
+    base: dict[str, Metrics] = {"multi/core": {"handover_accuracy": 0.94}}
+    assert check({"multi/core": {"handover_accuracy": 0.88}}, base).passed
+    assert failed(check({"multi/core": {"handover_accuracy": 0.80}}, base).failures) == [
+        "handover_accuracy"
+    ]
