@@ -1,4 +1,4 @@
-.PHONY: setup test lint format migrate seed eval eval-gate redteam dashboard judge-calibrate agent-eval api rag-index rag-eval up down
+.PHONY: setup test lint format migrate seed eval eval-gate redteam dashboard judge-calibrate agent-eval api serve serve-sim rag-index rag-eval up down
 
 setup:
 	uv sync
@@ -49,6 +49,12 @@ agent-eval: up
 
 api:
 	uv run uvicorn parley.backend.api:create_app --factory --reload
+
+serve: up migrate
+	uv run python -m parley.service $(ARGS)
+
+serve-sim: up migrate
+	PARLEY_LLM_MODE=simulated PARLEY_SIMULATED_LATENCY_S=0.4 uv run python -m parley.service $(ARGS)
 
 rag-index: up migrate
 	uv run python -m parley.rag
