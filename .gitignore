@@ -24,3 +24,8 @@ console/node_modules/
 console/.next/
 console/next-env.d.ts
 console/*.tsbuildinfo
+
+scripts/demo/node_modules/
+scripts/demo/out/
+scripts/demo/facts.json
+reports/phase9/*.json

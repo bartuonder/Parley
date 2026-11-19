@@ -1,0 +1,14 @@
+{
+  "name": "parley-demo-kit",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Records the console demo video and takes README screenshots with Playwright.",
+  "scripts": {
+    "record": "node record.mjs out facts.json",
+    "shots": "node shots.mjs ../../docs/media"
+  },
+  "dependencies": {
+    "playwright": "^1.65.0"
+  }
+}
