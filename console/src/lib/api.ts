@@ -2,8 +2,15 @@ export type Status = "queued" | "running" | "awaiting_approval" | "resolved" | "
 
 export type PendingRefund = { refund_id: number; amount_cents: number; target: string };
 
+export type PolicyRef = { id: string; version: number; title: string };
+
+export type Customer = { name: string; email: string };
+
 export type Ticket = {
   id: string;
+  number: number;
+  customer_name: string | null;
+  policies: PolicyRef[];
   sender_email: string;
   subject: string;
   body: string;
@@ -38,6 +45,7 @@ export type Span = {
 };
 
 export type Stats = {
+  approval_threshold_cents: number;
   by_status: Record<string, number>;
   tickets: number;
   total_cost_usd: number;
@@ -84,6 +92,7 @@ const json = (body: unknown): RequestInit => ({
 
 export const api = {
   stats: () => request<Stats>("stats"),
+  customers: () => request<Customer[]>("customers"),
   tickets: (status?: string) =>
     request<Ticket[]>(`tickets${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   ticket: (id: string) => request<Ticket>(`tickets/${encodeURIComponent(id)}`),

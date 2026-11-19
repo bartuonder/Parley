@@ -1,4 +1,5 @@
 import type { Span } from "./api";
+import { humanize, toolLabel } from "./present";
 
 export type Row = {
   span: Span;
@@ -8,6 +9,17 @@ export type Row = {
 };
 
 const MIN_WIDTH_PCT = 0.8;
+
+const NODE_LABEL: Record<string, string> = {
+  triage: "Routing",
+  investigate: "Investigation",
+  critic: "Policy review",
+  handover: "Handover",
+  execute: "Execution",
+  respond: "Reply writing",
+  remember: "Memory update",
+  approval: "Human approval",
+};
 
 export function buildRows(spans: Span[]): Row[] {
   if (!spans.length) return [];
@@ -41,15 +53,40 @@ export function buildRows(spans: Span[]): Row[] {
 
 export function label(span: Span): string {
   const model = span.attributes.model;
-  if (span.kind === "llm" && typeof model === "string") return `${span.name} (${model})`;
-  return span.name;
+  if (span.kind === "llm") return typeof model === "string" ? `Model call, ${model}` : "Model call";
+  if (span.kind === "tool") return toolLabel(span.name.replace(/^tool\./, ""));
+  if (span.kind === "node") return NODE_LABEL[span.name.replace(/^node\./, "")] ?? humanize(span.name);
+  if (span.kind === "ticket") return "Ticket run";
+  if (span.kind === "rag") return "Policy search";
+  return humanize(span.name);
+}
+
+const SHOWN: Record<string, string> = {
+  arguments: "Arguments",
+  output: "Result",
+  model: "Model",
+  prompt_tokens: "Prompt tokens",
+  completion_tokens: "Completion tokens",
+  cached_tokens: "Cached tokens",
+  cost_usd: "Cost (USD)",
+  ok: "Succeeded",
+  error_code: "Error code",
+  cache_hit: "Cache hit",
+};
+
+function pretty(value: unknown): string {
+  if (typeof value !== "string") return JSON.stringify(value);
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
 }
 
 export function details(span: Span): [string, string][] {
   const out: [string, string][] = [];
-  for (const [key, value] of Object.entries(span.attributes)) {
-    if (key === "parley.kind") continue;
-    out.push([key, typeof value === "string" ? value : JSON.stringify(value)]);
+  for (const [key, title] of Object.entries(SHOWN)) {
+    if (key in span.attributes) out.push([title, pretty(span.attributes[key])]);
   }
   return out;
 }

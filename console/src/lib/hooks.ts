@@ -5,7 +5,7 @@ import type { TicketEvent } from "./api";
 
 type Polled<T> = { data: T | null; error: string | null; refresh: () => void };
 
-export function usePolling<T>(load: () => Promise<T>, intervalMs: number): Polled<T> {
+export function usePolling<T>(load: () => Promise<T>, intervalMs: number, restartKey: unknown = null): Polled<T> {
   const [state, setState] = useState<{ data: T | null; error: string | null }>({
     data: null,
     error: null,
@@ -32,7 +32,7 @@ export function usePolling<T>(load: () => Promise<T>, intervalMs: number): Polle
       alive = false;
       clearInterval(timer);
     };
-  }, [intervalMs, version]);
+  }, [intervalMs, version, restartKey]);
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   return { ...state, refresh };
 }

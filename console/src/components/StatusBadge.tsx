@@ -1,6 +1,0 @@
-import type { Status } from "@/lib/api";
-import { STATUS_LABEL } from "@/lib/format";
-
-export function StatusBadge({ status }: { status: Status }) {
-  return <span className={`badge badge-${status}`}>{STATUS_LABEL[status] ?? status}</span>;
-}

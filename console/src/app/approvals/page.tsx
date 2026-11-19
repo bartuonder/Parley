@@ -1,31 +1,87 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { ApprovalPanel } from "@/components/ApprovalPanel";
-import { api } from "@/lib/api";
-import { stamp } from "@/lib/format";
+import { DecisionPanel } from "@/components/DecisionPanel";
+import { Avatar, Empty, Skeleton } from "@/components/ui";
+import { api, type Ticket } from "@/lib/api";
 import { usePolling } from "@/lib/hooks";
+import { displayName, formatWhen, money } from "@/lib/present";
+
+function reasonOf(t: Ticket): string | null {
+  const proposal = (t.result.actions ?? []).find((a) => a.name === "propose_refund");
+  const reason = proposal?.arguments.reason;
+  return typeof reason === "string" ? reason : null;
+}
 
 export default function Approvals() {
   const queue = usePolling(api.approvals, 3000);
+  const stats = usePolling(api.stats, 8000);
+  const limit = stats.data ? money(stats.data.approval_threshold_cents) : "the threshold";
+  const items = queue.data;
   return (
-    <section aria-label="Approval queue">
-      <h1>Approval queue</h1>
-      <p className="muted">Refunds above the approval threshold wait here for a human decision.</p>
-      {queue.error && <p className="error" role="alert">{queue.error}</p>}
-      {queue.data && !queue.data.length && <p className="muted">Nothing is waiting.</p>}
-      {queue.data?.map((ticket) => (
-        <article key={ticket.id} className="card">
-          <header className="card-head">
-            <Link href={`/tickets/${ticket.id}`}>{ticket.subject}</Link>
-            <span className="muted small">
-              {ticket.sender_email}, {stamp(ticket.created_at)}
-            </span>
-          </header>
-          <p className="quote">{ticket.body}</p>
-          <ApprovalPanel ticket={ticket} onDone={queue.refresh} />
-        </article>
-      ))}
-    </section>
+    <div className="page" style={{ maxWidth: 820, margin: "0 auto" }}>
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">Approvals</p>
+          <h1>Waiting for your decision</h1>
+          <p className="muted" style={{ marginTop: 4 }}>
+            Refunds above {limit} stop here. The agents carry on as soon as you decide.
+          </p>
+        </div>
+      </div>
+      {queue.error && !items && (
+        <p className="error" role="alert">
+          The service is not reachable. {queue.error}
+        </p>
+      )}
+      {!items && !queue.error && <Skeleton height={180} />}
+      {items && !items.length && (
+        <div className="card">
+          <Empty icon={<ShieldCheck size={22} />} title="Nothing is waiting">
+            New refunds above {limit} will show up here.
+          </Empty>
+        </div>
+      )}
+      {items?.map((ticket) => {
+        const name = displayName(ticket);
+        const total = ticket.pending.reduce((n, p) => n + p.amount_cents, 0);
+        const reason = reasonOf(ticket);
+        return (
+          <article key={ticket.id} className="card approval-card">
+            <div className="approval-top">
+              <div className="who">
+                <Avatar name={name} />
+                <div>
+                  <strong>{name}</strong>
+                  <Link href={`/tickets/${ticket.id}`} className="muted small">
+                    Ticket #{ticket.number}, {formatWhen(ticket.created_at)}
+                  </Link>
+                </div>
+              </div>
+              <div>
+                <div className="amount">{money(total)}</div>
+                <div className="faint small" style={{ textAlign: "right" }}>
+                  refund requested
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="small faint" style={{ marginBottom: 6 }}>
+                {ticket.subject}
+              </p>
+              <p className="quote">{ticket.body}</p>
+            </div>
+            {reason && (
+              <p className="muted">
+                <strong style={{ color: "var(--text)" }}>Why the agents proposed it: </strong>
+                {reason}
+              </p>
+            )}
+            <DecisionPanel ticket={ticket} onDone={queue.refresh} />
+          </article>
+        );
+      })}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 const BASE = process.env.PARLEY_API_URL ?? "http://127.0.0.1:8000";
 const KEY = process.env.PARLEY_API_KEY ?? "";
-const ALLOWED = new Set(["tickets", "approvals", "stats", "health"]);
+const ALLOWED = new Set(["tickets", "approvals", "stats", "customers", "health"]);
 
 export const dynamic = "force-dynamic";
 
