@@ -4,6 +4,7 @@ import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
+from functools import lru_cache
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -11,7 +12,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 
+from parley.backend.rules import APPROVAL_THRESHOLD_CENTS
+from parley.db.models import Customer
 from parley.observability.tables import TraceSpanRow
+from parley.policies.loader import load_policies
 from parley.service.core import (
     NewTicket,
     NotAwaitingApprovalError,
@@ -32,10 +36,24 @@ POLL_S = 0.25
 HEARTBEAT_S = 15.0
 
 
+class PolicyRef(BaseModel):
+    id: str
+    version: int
+    title: str
+
+
+class CustomerOut(BaseModel):
+    name: str
+    email: str
+
+
 class TicketOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    number: int
+    customer_name: str | None = None
+    policies: list[PolicyRef] = []
     sender_email: str
     subject: str
     body: str
@@ -69,6 +87,7 @@ class SpanOut(BaseModel):
 
 
 class StatsOut(BaseModel):
+    approval_threshold_cents: int = APPROVAL_THRESHOLD_CENTS
     by_status: dict[str, int]
     tickets: int
     total_cost_usd: float
@@ -117,20 +136,28 @@ def create_app(runtime: Runtime | None = None, api_key: str | None = None) -> Fa
         return {"status": "ok"}
 
     @app.post("/tickets", status_code=202, response_model=TicketOut, dependencies=guard)
-    async def create_ticket(body: NewTicket, runtime: RuntimeDep) -> ServiceTicketRow:
-        return await runtime.service.submit(body)
+    async def create_ticket(body: NewTicket, runtime: RuntimeDep) -> TicketOut:
+        return present(runtime, [await runtime.service.submit(body)])[0]
 
     @app.get("/tickets", response_model=list[TicketOut], dependencies=guard)
     async def list_tickets(
         runtime: RuntimeDep,
         status: str | None = None,
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    ) -> list[ServiceTicketRow]:
-        return runtime.service.list_tickets(status, limit)
+    ) -> list[TicketOut]:
+        return present(runtime, runtime.service.list_tickets(status, limit))
+
+    @app.get("/customers", response_model=list[CustomerOut], dependencies=guard)
+    async def customers(
+        runtime: RuntimeDep, limit: Annotated[int, Query(ge=1, le=500)] = 300
+    ) -> list[CustomerOut]:
+        with runtime.sessions() as session:
+            stmt = select(Customer.name, Customer.email).order_by(Customer.name).limit(limit)
+            return [CustomerOut(name=n, email=e) for n, e in session.execute(stmt)]
 
     @app.get("/tickets/{ticket_id}", response_model=TicketOut, dependencies=guard)
-    async def get_ticket(ticket_id: str, runtime: RuntimeDep) -> ServiceTicketRow:
-        return _found(runtime.service.get_ticket(ticket_id))
+    async def get_ticket(ticket_id: str, runtime: RuntimeDep) -> TicketOut:
+        return present(runtime, [_found(runtime.service.get_ticket(ticket_id))])[0]
 
     @app.get("/tickets/{ticket_id}/events", dependencies=guard)
     async def stream_events(
@@ -173,13 +200,13 @@ def create_app(runtime: Runtime | None = None, api_key: str | None = None) -> Fa
             ]
 
     @app.get("/approvals", response_model=list[TicketOut], dependencies=guard)
-    async def approvals(runtime: RuntimeDep) -> list[ServiceTicketRow]:
-        return runtime.service.list_tickets(AWAITING_APPROVAL, 200)
+    async def approvals(runtime: RuntimeDep) -> list[TicketOut]:
+        return present(runtime, runtime.service.list_tickets(AWAITING_APPROVAL, 200))
 
     @app.post("/approvals/{ticket_id}/decision", response_model=TicketOut, dependencies=guard)
-    async def decide(ticket_id: str, body: DecisionIn, runtime: RuntimeDep) -> ServiceTicketRow:
+    async def decide(ticket_id: str, body: DecisionIn, runtime: RuntimeDep) -> TicketOut:
         _found(runtime.service.get_ticket(ticket_id))
-        return await runtime.service.decide(ticket_id, body.decisions)
+        return present(runtime, [await runtime.service.decide(ticket_id, body.decisions)])[0]
 
     @app.get("/stats", response_model=StatsOut, dependencies=guard)
     async def stats(runtime: RuntimeDep) -> StatsOut:
@@ -206,6 +233,35 @@ def create_app(runtime: Runtime | None = None, api_key: str | None = None) -> Fa
         )
 
     return app
+
+
+@lru_cache
+def policy_titles() -> dict[str, tuple[int, str]]:
+    return {doc.key: (doc.version, doc.title) for doc in load_policies()}
+
+
+def present(runtime: Runtime, rows: list[ServiceTicketRow]) -> list[TicketOut]:
+    """Tickets as the API shows them: with the customer's name and readable policy titles."""
+    emails = {r.sender_email for r in rows}
+    with runtime.sessions() as session:
+        names = {
+            email: name
+            for email, name in session.execute(
+                select(Customer.email, Customer.name).where(Customer.email.in_(emails))
+            )
+        }
+    titles = policy_titles()
+    out = []
+    for row in rows:
+        ticket = TicketOut.model_validate(row, from_attributes=True)
+        ticket.customer_name = names.get(row.sender_email)
+        ticket.policies = [
+            PolicyRef(id=key.split("@")[0], version=titles[key][0], title=titles[key][1])
+            for key in row.result.get("policies", [])
+            if key in titles
+        ]
+        out.append(ticket)
+    return out
 
 
 def _configured_key() -> str | None:

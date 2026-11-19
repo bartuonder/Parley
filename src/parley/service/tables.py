@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Float, Index, String, Text
+from sqlalchemy import Float, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +23,9 @@ class ServiceTicketRow(Base):
     __tablename__ = "service_tickets"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    number: Mapped[int] = mapped_column(
+        Integer, server_default=text("nextval('service_ticket_number_seq')"), unique=True
+    )
     sender_email: Mapped[str] = mapped_column(String(255), index=True)
     subject: Mapped[str] = mapped_column(String(300))
     body: Mapped[str] = mapped_column(Text)

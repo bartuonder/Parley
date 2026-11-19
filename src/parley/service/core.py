@@ -188,7 +188,9 @@ class TicketService:
 
     def list_tickets(self, status: str | None = None, limit: int = 50) -> list[ServiceTicketRow]:
         with self._sessions() as session:
-            stmt = select(ServiceTicketRow).order_by(ServiceTicketRow.created_at.desc())
+            stmt = select(ServiceTicketRow).order_by(
+                ServiceTicketRow.created_at.desc(), ServiceTicketRow.number.desc()
+            )
             if status:
                 stmt = stmt.where(ServiceTicketRow.status == status)
             return list(session.scalars(stmt.limit(limit)))
@@ -237,6 +239,7 @@ class TicketService:
             "escalations": [e.model_dump() for e in result.escalations],
             "critic_issues": result.extras.get("critic_issues", []),
             "guard_events": result.extras.get("guard_events", []),
+            "policies": result.cited_policies[:3],
         }
         waiting = bool(result.extras.get("awaiting_approval"))
         row.pending = _waiting_refunds(result) if waiting else []

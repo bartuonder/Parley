@@ -134,3 +134,36 @@ def test_a_large_refund_shows_up_in_the_approval_queue_and_can_be_decided(
         assert "declined" in decided.json()["followup"]
         again = client.post(f"/approvals/{ticket_id}/decision", json={"decisions": {}})
         assert again.status_code == 409 and client.get("/approvals").json() == []
+
+
+def test_tickets_carry_a_number_the_customers_name_and_policy_titles(client: TestClient) -> None:
+    first = client.post("/tickets", json=BODY).json()
+    second = client.post("/tickets", json={**BODY, "subject": "Again"}).json()
+    assert second["number"] == first["number"] + 1 and first["number"] >= 1001
+    done = wait_for(client, first["id"], "resolved")
+    assert done["customer_name"] == "Ada Lovelace" and done["sender_email"] == "ada@example.com"
+    assert done["policies"] == []
+    listed = client.get("/tickets").json()
+    assert [t["number"] for t in listed] == sorted((t["number"] for t in listed), reverse=True)
+
+
+def test_known_policy_keys_are_shown_with_their_titles_and_unknown_ones_are_dropped(
+    client: TestClient, session: Session
+) -> None:
+    from parley.service.tables import ServiceTicketRow
+
+    ticket_id = client.post("/tickets", json=BODY).json()["id"]
+    wait_for(client, ticket_id, "resolved")
+    row = session.get(ServiceTicketRow, ticket_id)
+    assert row is not None
+    row.result = {"policies": ["POL-REF-001@v2", "POL-XXX-999@v1"]}
+    session.flush()
+    shown = client.get(f"/tickets/{ticket_id}").json()["policies"]
+    assert [p["id"] for p in shown] == ["POL-REF-001"] and shown[0]["version"] == 2
+    assert shown[0]["title"]
+
+
+def test_the_customer_list_and_the_approval_threshold_are_exposed(client: TestClient) -> None:
+    customers = client.get("/customers").json()
+    assert {"name": "Ada Lovelace", "email": "ada@example.com"} in customers
+    assert client.get("/stats").json()["approval_threshold_cents"] == APPROVAL_THRESHOLD_CENTS
