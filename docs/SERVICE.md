@@ -11,7 +11,7 @@ Phase 8 turns the agent graph into something a person can use: an HTTP API with 
 | `make console-dev` | Next.js console on port 3000, talking to the API on port 8000 |
 | `make stack` | Postgres, API and console in containers; open http://localhost:3000 |
 
-`make stack` needs `PARLEY_API_KEY` in `.env` (the example file has a placeholder). It starts in simulated mode; set `PARLEY_LLM_MODE=live` and `PARLEY_LLM_API_KEY` for real model calls. On first start the API container applies the migrations and, when the database is empty, seeds the synthetic world (and builds the policy index in live mode). The demo clock is pinned to the world's reference date (`PARLEY_FIXED_NOW`), so ticket dates make sense against the seeded orders; production refuses a pinned clock.
+Set `PARLEY_API_KEY` in `.env` to protect the API (the example file has a placeholder); without it the API is open, which is fine on localhost only. Compose does not need it for `make up`. `make stack` starts in simulated mode; set `PARLEY_LLM_MODE=live` and `PARLEY_LLM_API_KEY` for real model calls. On first start the API container applies the migrations and, when the database is empty, seeds the synthetic world (and builds the policy index in live mode). The demo clock is pinned to the world's reference date (`PARLEY_FIXED_NOW`), so ticket dates make sense against the seeded orders; production refuses a pinned clock.
 
 ## API
 

@@ -27,7 +27,7 @@ services:
       PARLEY_LLM_MODE: ${PARLEY_LLM_MODE:-simulated}
       PARLEY_SIMULATED_LATENCY_S: ${PARLEY_SIMULATED_LATENCY_S:-0.3}
       PARLEY_LLM_API_KEY: ${PARLEY_LLM_API_KEY:-}
-      PARLEY_API_KEY: ${PARLEY_API_KEY:?set PARLEY_API_KEY in .env}
+      PARLEY_API_KEY: ${PARLEY_API_KEY:-}
       PARLEY_FIXED_NOW: ${PARLEY_FIXED_NOW:-2026-06-01T12:00:00+00:00}
     depends_on:
       postgres:
@@ -44,7 +44,7 @@ services:
       dockerfile: docker/console.Dockerfile
     environment:
       PARLEY_API_URL: http://api:8000
-      PARLEY_API_KEY: ${PARLEY_API_KEY:?set PARLEY_API_KEY in .env}
+      PARLEY_API_KEY: ${PARLEY_API_KEY:-}
     depends_on:
       api:
         condition: service_healthy
