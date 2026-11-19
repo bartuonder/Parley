@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from parley.agent.llm import LLMClient
-from parley.agent.result import AgentResult
+from parley.agent.result import CITATION, AgentResult
 from parley.agent.ticket import Ticket
 from parley.backend.services import Backend, NotFoundError
 from parley.observability.llm import TracedLLM
@@ -239,7 +239,7 @@ class TicketService:
             "escalations": [e.model_dump() for e in result.escalations],
             "critic_issues": result.extras.get("critic_issues", []),
             "guard_events": result.extras.get("guard_events", []),
-            "policies": result.cited_policies[:3],
+            "policies": _shown_policies(result),
         }
         waiting = bool(result.extras.get("awaiting_approval"))
         row.pending = _waiting_refunds(result) if waiting else []
@@ -274,6 +274,15 @@ class TicketService:
 
 def _ticket_of(row: ServiceTicketRow) -> Ticket:
     return Ticket(id=row.id, sender_email=row.sender_email, subject=row.subject, body=row.body)
+
+
+def _shown_policies(result: AgentResult) -> list[str]:
+    """Policies the reply names; failing that, the best hit when a refund or cancellation ran."""
+    named = list(dict.fromkeys(CITATION.findall(result.reply)))
+    acted = any(
+        c.ok and c.name in ("issue_refund", "cancel_subscription") for c in result.tool_calls
+    )
+    return named[:3] or (result.cited_policies[:1] if acted else [])
 
 
 def _waiting_refunds(result: AgentResult) -> list[dict[str, Any]]:

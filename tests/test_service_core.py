@@ -199,3 +199,32 @@ def test_only_as_many_tickets_run_at_once_as_there_are_slots(session: Session) -
         return [*mid, *end]
 
     assert asyncio.run(go()) == ["running", "queued", RESOLVED, RESOLVED]
+
+
+def test_only_the_policies_the_reply_names_are_shown_else_the_best_hit() -> None:
+    from parley.agent.result import AgentResult, StopReason, ToolInvocation
+    from parley.service.core import _shown_policies
+
+    hits = ToolInvocation(
+        name="search_policies",
+        arguments={},
+        ok=True,
+        output={"hits": ["POL-REF-001@v2", "POL-REF-002@v1", "POL-SHP-005@v1"]},
+    )
+
+    def result(reply: str) -> AgentResult:
+        return AgentResult(
+            ticket_id="T",
+            model="m",
+            reply=reply,
+            stop_reason=StopReason.REPLY,
+            steps=1,
+            latency_s=0.1,
+            tool_calls=[hits],
+        )
+
+    assert _shown_policies(result("Per POL-REF-002@v1 you are covered.")) == ["POL-REF-002@v1"]
+    assert _shown_policies(result("No citation here.")) == []
+    refund = ToolInvocation(name="issue_refund", arguments={}, ok=True, output={})
+    acted = result("No citation here.").model_copy(update={"tool_calls": [hits, refund]})
+    assert _shown_policies(acted) == ["POL-REF-001@v2"]
