@@ -139,14 +139,12 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ---
 
-## Today: Phase 9 kickoff
-1. Propose the plan for the presentation (README with architecture diagram, eval report, ablation tables, demo video script, technical write-up) and wait for approval. Pull the numbers from `docs/EVAL.md`, `docs/RAG_ABLATION.md`, `docs/SECURITY.md`, `docs/OBSERVABILITY.md` and `docs/SERVICE.md`, and keep their stated caveats.
-2. Before writing claims, settle the open items: the per-guard ablation was never run, pass^4 (the project target) exists only for the Phase 5 code (98.2% core, 96.8% held-out in `docs/EVAL.md`) while later runs used three repeats, ATK-027 and SHP-002 stay unstable, and the service has not been deployed to a cloud host.
-3. Implement in small commits, lint and tests before every commit.
+## Today: all roadmap phases are done
+Open items, none blocking: deploy the Compose stack to a cloud host (needs the owner's account; steps in `docs/SERVICE.md`), upload `docs/media/parley-demo.mp4` to GitHub for inline playback, add attacks written by someone other than the defense author, run a second model family, make the graph's database access async. Keep the caveats in the README and `docs/WRITEUP.md` true when numbers change.
 
 ## Progress
 - [x] Phase 0  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
-- [x] Phase 5  - [x] Phase 6  - [x] Phase 7  - [x] Phase 8  - [ ] Phase 9
+- [x] Phase 5  - [x] Phase 6  - [x] Phase 7  - [x] Phase 8  - [x] Phase 9
 
 ## Decisions
 (Record architectural decisions here: date, decision, reason.)
@@ -210,3 +208,6 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 - 2026-11-19: Unbounded concurrency stalled the service: the graph uses synchronous sessions inside async code, so a burst exhausted the connection pool and the blocked event loop could not release it. The fix is a semaphore (`PARLEY_MAX_CONCURRENT_TICKETS`, default 8), a pool sized from it, and span export from a background thread. A simulated model (`PARLEY_LLM_MODE=simulated`, refused in prod) lets CI, demos and load tests run without a key.
 - 2026-11-19: The console is a Next.js app (the owner chose it over Streamlit) that reaches the API only through its own `/api` route, which adds the API key on the server, exposes four path prefixes, and passes event streams through. Traces carry redacted tool arguments and results in the service (switch `PARLEY_TRACE_CONTENT`); prompts and replies are never put in spans. MLflow and W&B were dropped from the stack: results are files in git.
 - 2026-11-19: Not done in Phase 8: a cloud deployment (the Compose stack runs locally and `docs/SERVICE.md` lists the steps), a login for console users, and a real-model load test. The console was verified by component tests, a production build and requests through its proxy, not in a browser.
+- 2026-11-19: Phase 9 refreshed the evidence before any claim went into the README: pass^4 on the current code is 96.4% on core and 100% on held-out (four runs each), and the per-guard ablation ran (one run of 36 attacks per guard). With the guards on, 0 of 108 attack runs landed for the graph; with them off 11.1% (single agent) and 7.4% (graph) did. Only switching off the policy-integrity check let an attack land in the ablation, which is read as overlapping defenses, not as proof that the other guards are redundant (`docs/SECURITY.md`).
+- 2026-11-19: Building the demo against the seeded world found a real bug the small scenario worlds could not: the critic's evidence was cut at 1,800 characters, so a customer's order items fell off the end and correct refunds were rejected. The limit is 6,000 now; one ticket went from 18.7 s and $0.0098 to 7.0 s and $0.0041 (a single observation).
+- 2026-11-19: The README, `docs/WRITEUP.md` and `docs/DEMO.md` are the presentation. The screenshots and the two-minute video are recorded from the real console with Playwright (`scripts/demo`), captions added on screen, no voice-over. The video lives in `docs/media`, which the large-file pre-commit hook skips. The project is MIT licensed. Compose no longer requires `PARLEY_API_KEY` for commands that do not start the app profile.
