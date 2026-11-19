@@ -199,3 +199,9 @@ def test_the_critic_is_told_not_to_list_correct_points_or_ask_for_rewording() ->
 
     assert "Never list a point that is already correct" in CRITIC_PROMPT
     assert "never ask for different wording" in CRITIC_PROMPT
+
+
+def test_the_critic_sees_a_whole_customer_overview_of_ordinary_size() -> None:
+    items = [{"order_id": n, "items": [f"item {n}"]} for n in range(120)]
+    call = ToolInvocation(name="get_customer_overview", arguments={}, ok=True, output={"o": items})
+    assert "item 119" in render_evidence([call])

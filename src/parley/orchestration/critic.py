@@ -138,7 +138,7 @@ def rule_issues(
     return issues
 
 
-def render_evidence(calls: list[ToolInvocation], limit: int = 1800) -> str:
+def render_evidence(calls: list[ToolInvocation], limit: int = 6000) -> str:
     blocks = []
     for call in calls:
         if not call.ok:
