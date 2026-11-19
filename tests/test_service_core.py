@@ -228,3 +228,20 @@ def test_only_the_policies_the_reply_names_are_shown_else_the_best_hit() -> None
     refund = ToolInvocation(name="issue_refund", arguments={}, ok=True, output={})
     acted = result("No citation here.").model_copy(update={"tool_calls": [hits, refund]})
     assert _shown_policies(acted) == ["POL-REF-001@v2"]
+
+
+def test_the_live_summary_marks_a_refund_that_waits_for_approval() -> None:
+    from parley.service.core import summarize
+
+    update = {
+        "actions": [
+            {"kind": "issue_refund", "output": {"awaiting_approval": True}},
+            {"kind": "issue_refund", "output": {}},
+            {"kind": "escalate_to_human", "output": {}},
+        ]
+    }
+    assert summarize("execute", update)["actions"] == [
+        "issue_refund_pending",
+        "issue_refund",
+        "escalate_to_human",
+    ]

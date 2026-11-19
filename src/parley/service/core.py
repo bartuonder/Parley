@@ -310,7 +310,14 @@ def summarize(node: str, update: dict[str, Any]) -> dict[str, Any]:
         verdict = update.get("verdict", {})
         return {"approved": verdict.get("approved"), "issues": update.get("issues", [])}
     if node == "execute":
-        return {"actions": [a.get("kind") for a in update.get("actions", [])]}
+        return {
+            "actions": [
+                f"{a.get('kind')}_pending"
+                if (a.get("output") or {}).get("awaiting_approval")
+                else a.get("kind")
+                for a in update.get("actions", [])
+            ]
+        }
     return {}
 
 

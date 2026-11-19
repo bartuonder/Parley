@@ -191,6 +191,13 @@ describe("stepsFromEvents", () => {
     expect(text).not.toMatch(/get_order|issue_refund|check_refund|remember|node/);
   });
 
+  it("says a large refund was sent for approval, not issued", () => {
+    const steps = stepsFromEvents([
+      { id: 1, kind: "node", data: { node: "execute", actions: ["issue_refund_pending"] }, at: "" },
+    ]);
+    expect(steps[0].items).toEqual(["Refund sent for approval"]);
+  });
+
   it("reports a waiting approval, a human decision and a failure", () => {
     const waiting = stepsFromEvents([{ id: 1, kind: "status", data: { status: "awaiting_approval" }, at: "" }]);
     expect(waiting[0]).toMatchObject({ title: "Waiting for a human to approve the refund", tone: "warn" });

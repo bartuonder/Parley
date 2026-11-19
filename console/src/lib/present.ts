@@ -22,6 +22,7 @@ const TOOL_LABEL: Record<string, string> = {
 };
 
 const ACTION_LABEL: Record<string, string> = {
+  issue_refund_pending: "Refund sent for approval",
   issue_refund: "Refund issued",
   cancel_subscription: "Cancellation scheduled",
   escalate_to_human: "Handed to a human",
