@@ -117,3 +117,14 @@ Against the 50 labels, overall agreement was 92.5% on the first prompt and 95.5%
 - Sample sizes are small. The held-out set has 31 scenarios, the dialogue set 14, and four runs bound the variance only roughly.
 - The simulator is one model playing 14 personas; real customers are less cooperative.
 - The claimed-but-not-done metric is still a sentence-level pattern match; the judge's "no false claims" covers paraphrases but is itself 98% in agreement with the labels, not perfect.
+
+## Phase 9 refresh: pass^4 on the current code
+
+The Phase 5 pass^4 above was measured on the Phase 5 code. After Phases 6 to 8 (guards, the fraud rule, prompt fixes, the critic evidence fix) the multi-agent graph was run four times on the core and held-out sets (`reports/phase9`, no judge, about $1.1):
+
+| Set | Task success (range) | `pass^4` | Unstable scenarios |
+| --- | --- | --- | --- |
+| core (55) | 99.1% (98.2 to 100) | 96.4% | SHP-002, SUB-007 |
+| held-out (31) | 100.0% | 100.0% | none |
+
+The project target is pass^4 of at least 60%. A set of 31 scenarios passing four times is encouraging; it does not mean the held-out set is solved for good, because the set is small and its scenarios are no longer untouched (see above).
