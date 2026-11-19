@@ -23,7 +23,7 @@ An eval-driven, multi-agent customer operations platform. Agents resolve e-comme
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
   T[Ticket] --> TR[triage<br/>small model]
   TR --> IN[investigate<br/>billing, shipping or subscription specialist]
   IN <-->|read tools, policy search| W[(Simulated backend<br/>+ policy index)]
