@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Ticket } from "@/lib/api";
-import { ago, seconds, usd } from "@/lib/format";
+import { seconds, stamp, usd } from "@/lib/format";
 import { StatusBadge } from "./StatusBadge";
 
 export function TicketList({ tickets }: { tickets: Ticket[] }) {
@@ -33,7 +33,7 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
               <td>{t.specialist ?? "-"}</td>
               <td className="num">{t.cost_usd ? usd(t.cost_usd) : "-"}</td>
               <td className="num">{t.latency_s ? seconds(t.latency_s) : "-"}</td>
-              <td>{ago(t.created_at)}</td>
+              <td className="small">{stamp(t.created_at)}</td>
             </tr>
           ))}
         </tbody>

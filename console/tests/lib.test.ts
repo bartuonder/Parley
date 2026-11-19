@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Span } from "../src/lib/api";
-import { ago, money, usd } from "../src/lib/format";
+import { money, stamp, usd } from "../src/lib/format";
 import { buildRows, details, label, totals } from "../src/lib/trace";
 
 function span(id: string, parent: string | null, name: string, kind: string, at: number, ms: number, attributes = {}): Span {
@@ -69,10 +69,7 @@ describe("format", () => {
     expect(usd(0.5)).toBe("$0.500");
   });
 
-  it("says how long ago something happened", () => {
-    const now = new Date("2026-06-01T12:00:00Z");
-    expect(ago("2026-06-01T11:59:30Z", now)).toBe("30s ago");
-    expect(ago("2026-06-01T11:00:00Z", now)).toBe("1h ago");
-    expect(ago("2026-05-30T12:00:00Z", now)).toBe("2d ago");
+  it("shows timestamps as absolute UTC so a pinned demo clock reads correctly", () => {
+    expect(stamp("2026-06-01T12:00:00.123456Z")).toBe("2026-06-01 12:00 UTC");
   });
 });

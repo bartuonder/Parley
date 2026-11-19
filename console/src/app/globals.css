@@ -43,6 +43,22 @@ body {
 
 a {
   color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.topbar nav a {
+  color: var(--muted);
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.topbar nav a.nav-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 h1 {

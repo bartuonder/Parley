@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ApprovalPanel } from "@/components/ApprovalPanel";
 import { api } from "@/lib/api";
-import { ago } from "@/lib/format";
+import { stamp } from "@/lib/format";
 import { usePolling } from "@/lib/hooks";
 
 export default function Approvals() {
@@ -19,7 +19,7 @@ export default function Approvals() {
           <header className="card-head">
             <Link href={`/tickets/${ticket.id}`}>{ticket.subject}</Link>
             <span className="muted small">
-              {ticket.sender_email}, {ago(ticket.created_at)}
+              {ticket.sender_email}, {stamp(ticket.created_at)}
             </span>
           </header>
           <p className="quote">{ticket.body}</p>

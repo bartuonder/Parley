@@ -15,10 +15,6 @@ export const STATUS_LABEL: Record<Status, string> = {
   failed: "Failed",
 };
 
-export function ago(iso: string, now: Date = new Date()): string {
-  const delta = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 1000));
-  if (delta < 60) return `${delta}s ago`;
-  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
-  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
-  return `${Math.floor(delta / 86400)}d ago`;
+export function stamp(iso: string): string {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
