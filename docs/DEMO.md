@@ -4,17 +4,16 @@ The video in `docs/media/parley-demo.mp4` is a screen recording of the real cons
 
 ## What it shows
 
-| Time | Scene | What to notice |
-| --- | --- | --- |
-| 0:00 | Title card | What the project is, in one sentence |
-| 0:05 | Console home | Stats, ticket list, the new-ticket form |
-| 0:10 | A refund inside the limit | A customer wants to return shoes that are too small (order 95, $110). The router picks a specialist, which reads the order and the policy, proposes a refund; the critic approves; the refund is issued |
-| 0:50 | The trace | Every step has a span: model calls, tool calls with their arguments and results, time and cost |
-| 1:00 | A refund above the threshold | Torn shoes, order 160, $220. The agents stop and the ticket waits |
-| 1:10 | Approval queue | A human approves; the paused graph resumes from its checkpoint and the customer gets the follow-up |
-| 1:35 | An injection attempt | The ticket text tries to give the agent orders. It is fenced as data and scanned; refunds and cancellations are locked and the ticket goes to a human |
-| 1:50 | Numbers card | The measured results, with the same caveats as the README |
-| 2:00 | Closing card | Repository and license |
+| Scene | What to notice |
+| --- | --- |
+| Title card | What the project is, in one sentence |
+| Inbox and overview | The inbox with a few earlier tickets, the key numbers, how a ticket is handled |
+| A refund inside the limit | A customer wants to return shoes that are too small (order 95, $110). The "New ticket" dialog has this as a ready example. The steps appear live in plain words; the resolution says the refund was issued; the policy that applied is shown with its version |
+| The trace | A developer view on its own tab: every model call and tool step with timing and masked arguments |
+| A refund above the threshold | Torn shoes, order 160, $220. The agents stop and the ticket waits for a person |
+| Approval queue | The request, the customer's message and the agents' reasoning; a decision resumes the paused workflow and the customer gets the follow-up |
+| An injection attempt | The message tries to give the agents orders. It is treated as untrusted text, refunds are locked and the ticket goes to a human |
+| Numbers card and closing card | The measured results with the same caveats as the README, then the repository and license |
 
 ## Run the same tickets yourself
 
@@ -32,16 +31,17 @@ The seeded world is dated 2026-06-01, so the service runs with `PARLEY_FIXED_NOW
 
 ## Record it again
 
-The recording and the README screenshots are scripted with Playwright (`scripts/demo`), so they can be regenerated after a change to the console.
+The video, the README loop and the screenshots are scripted with Playwright (`scripts/demo`), so they can be regenerated after a change to the console. Use a freshly seeded world and a real model, with the service and the console running. Send two background tickets first so that the inbox is not empty (a parcel question from `sophie.demir.11@example.com` and a plan cancellation from `margaret.hamilton.2@example.com`).
 
 ```bash
 cd scripts/demo
 npm ci && npx playwright install chromium
 cp facts.example.json facts.json        # the numbers shown on the metrics card
-# with the service and the console running on a freshly seeded world:
-node record.mjs out facts.json          # out/demo.webm, 1920x1080
+node record.mjs out facts.json          # out/demo.webm, 1920x1080, about 110 s
+node gif.mjs out/gif                    # out/gif/loop.webm, the short README loop
 node shots.mjs ../../docs/media         # needs the three demo tickets to exist
 ffmpeg -i out/demo.webm -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart ../../docs/media/parley-demo.mp4
+ffmpeg -i out/gif/loop.webm -vf "fps=12,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer:bayer_scale=4" ../../docs/media/parley-demo.gif
 ```
 
-The recording needs the model to answer, so it takes a few seconds per ticket and costs about two cents in model calls. If a take goes wrong (a model answer that does not trigger the approval, for example), reseed and record again; the script fails loudly instead of recording a wrong story.
+The recording needs the model to answer, so it takes a few seconds per ticket and costs about two cents in model calls. The model does not always take the path the story needs (a large refund is handed over instead of waiting about half the time), so the script checks each step and fails loudly instead of recording a wrong story: reseed and record again until a take completes. The screenshots expect the three demo tickets in that state, so retry the setup until the large refund waits for approval.

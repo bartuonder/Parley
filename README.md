@@ -6,9 +6,9 @@
 
 An eval-driven, multi-agent customer operations platform. Agents resolve e-commerce and subscription support tickets (refunds, shipping problems, cancellations, billing disputes) by searching company policy, calling tools against a simulated backend, passing every plan through a policy critic, and pausing for a human on risky actions. The project is built around measurement: every claim below comes with the run that produced it and its caveat.
 
-[Watch the 2-minute demo](docs/media/parley-demo.mp4) | [Technical write-up](docs/WRITEUP.md) | [Demo script](docs/DEMO.md)
+![A ticket arrives, the agents work on it live, and a refund is issued](docs/media/parley-demo.gif)
 
-![The Parley console: tickets, cost and approvals](docs/media/console-home.png)
+[Watch the full 2-minute demo video](docs/media/parley-demo.mp4) | [Technical write-up](docs/WRITEUP.md) | [Demo script](docs/DEMO.md)
 
 ## What it does
 
@@ -18,7 +18,14 @@ An eval-driven, multi-agent customer operations platform. Agents resolve e-comme
 - **Defends itself.** Ticket text and tool output are fenced as data and scanned for injected instructions; suspect tickets lose write access and go to a human.
 - **Shows its work.** Every ticket has a trace of model calls, tool calls with redacted arguments and results, time and cost.
 
-![A resolved ticket with its live steps and trace](docs/media/ticket-trace.png)
+![The console: inbox, outcomes and the agents' work](docs/media/console-home.png)
+
+| | |
+| --- | --- |
+| ![A resolved ticket: the reply, the resolution, what the agents did and the policy that applied](docs/media/ticket.png) | ![The approval queue: a large refund waits for a person](docs/media/approvals.png) |
+| A resolved ticket: the conversation, the resolution, the steps in plain words and the policy that applied. | A refund above the approval threshold waits for a person, with the agents' reasoning. |
+| ![An injection attempt: refunds are locked and a person takes over](docs/media/injection.png) | ![The developer trace: every model call and tool step with masked arguments](docs/media/trace.png) |
+| A message that tries to give the agents orders: a safety check fires and the ticket goes to a human. | The developer trace tab, for engineers: every step with timing and masked arguments. |
 
 ## Architecture
 

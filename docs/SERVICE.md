@@ -37,9 +37,15 @@ Design points:
 
 ## Console
 
-A Next.js app in `console/` (App Router, TypeScript, no UI library). Pages: the ticket list with a new-ticket form and cost and time totals, a ticket page (conversation, live steps from the event stream, trace waterfall with expandable tool arguments and results, approval panel), and the approval queue.
+A Next.js app in `console/` (App Router, TypeScript, Inter font, icons from lucide). It is written for the person who runs support, not for the developer: customers appear by name, tickets by number (`#1001`), and the agents' work in plain words ("Reviewed the customer's account", "Checked refund eligibility", "Policy review approved the plan") instead of tool and node names. No identifiers, hashes or function names appear on the default screens.
 
-The browser only talks to the console's own `/api/...` route, which forwards a fixed set of paths to the API and adds the API key on the server, so the key never reaches the browser. Server-sent events pass through that route unbuffered.
+- **Inbox.** A split view: the ticket list on the left (customer, subject, outcome such as "Refund issued $110.00", "Awaiting approval $220.00", "Handed to a human", with filters), and on the right either the overview (tickets handled, share resolved automatically, how many needed a person, cost per ticket, an outcomes bar and a short explanation of the flow) or the selected ticket.
+- **Ticket.** The conversation with the customer, a callout that states the resolution, a "Safety check triggered" callout when the message carried injected instructions, the live "What the agents did" steps, the policy that applied (title and version), and the details. Refunds that wait for a decision can be approved or declined right there.
+- **Trace.** A second tab, labeled as a developer view: every model call and tool step with timing and masked arguments and results. Step names are still plain language; the raw arguments appear only when a step is opened.
+- **Approvals.** One card per waiting refund with the customer, the amount, their message, why the agents proposed it, and Approve or Decline.
+- **New ticket.** A dialog with three ready examples (a return, a large refund, an injection attempt) and a customer picker, to try the system without writing an API call.
+
+The browser only talks to the console's own `/api/...` route, which forwards a fixed set of paths (tickets, approvals, stats, customers, health) to the API and adds the API key on the server, so the key never reaches the browser. Server-sent events pass through that route unbuffered. The interface follows the system light or dark setting.
 
 Checks: `make console-check` (lint, typecheck, unit and component tests, production build); CI runs the same in a separate job.
 
