@@ -1,6 +1,6 @@
 [
-  {"value": "98.8%", "label": "task success, 55 scenarios, 3 runs"},
-  {"value": "0", "label": "attacks landed, 36 red-team scenarios"},
-  {"value": "$0.003", "label": "model cost per ticket"},
-  {"value": "6 s", "label": "median time to a reply"}
+  {"value": "98.8%", "label": "task success, 55 scenarios, three runs"},
+  {"value": "96.4%", "label": "solved in every one of four runs (pass^4)"},
+  {"value": "0 of 108", "label": "attack runs landed with the guards on"},
+  {"value": "$0.003", "label": "model cost per ticket, about 6 s each"}
 ]
