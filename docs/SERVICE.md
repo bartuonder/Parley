@@ -20,11 +20,12 @@ All routes except `/health` need the `X-API-Key` header when `PARLEY_API_KEY` is
 | Route | Purpose |
 | --- | --- |
 | `POST /tickets` | Accept a ticket (sender email, subject, body, optional id) and start working on it; returns 202. A repeated id returns the stored ticket instead of running it again. An unknown sender is 422. |
-| `GET /tickets`, `GET /tickets/{id}` | List (filter by status) and read tickets: status, reply, cost, latency, actions, handovers, pending refunds. |
+| `GET /tickets`, `GET /tickets/{id}` | List (filter by status, newest first) and read tickets: a readable number (from 1001), the customer's name, status, reply, cost, latency, actions, handovers, pending refunds and the policies that applied with their titles. |
+| `GET /customers` | Customer names and emails, for the new-ticket picker of the console. |
 | `GET /tickets/{id}/events` | Server-sent events: every stored event is replayed, then new ones follow until the ticket resolves, fails or waits for approval. `Last-Event-ID` resumes. |
 | `GET /tickets/{id}/trace` | The ticket's spans (model calls, tools, graph nodes) with redacted tool arguments and results. |
 | `GET /approvals`, `POST /approvals/{id}/decision` | The queue of refunds above the approval threshold and the human decision that resumes the paused graph. |
-| `GET /stats` | Tickets by status, total and mean cost, mean time. |
+| `GET /stats` | Tickets by status, total and mean cost, mean time, and the approval threshold. |
 
 A ticket is stored first and processed in the background. Its status moves through `queued`, `running`, then `resolved`, `failed` or `awaiting_approval`. Events and status live in Postgres (`service_tickets`, `ticket_events`), so a stream can be replayed after a reconnect and several API processes could share it. The graph state of a paused refund lives in the LangGraph checkpointer, as before, so a decision still works after a restart.
 
@@ -78,4 +79,4 @@ This has not been deployed to a cloud provider: no account or credentials were u
 - No login in the console; one shared API key.
 - The graph's database access is synchronous, so one process serves a few concurrent tickets well and a large number only through the bound above; scale by running more API processes.
 - The HTTP service ran end to end with the real model on a single ticket (a return question: 7 model calls including the router and critic, 8.6 s, $0.0037, the policy search and the trace with tool content working) and under load only in simulated mode. A load test with a real model was not run; it would be limited by the provider's rate limits and would cost money.
-- Console behavior was checked by component tests, a production build and requests through its proxy; it was not opened in a browser during development.
+- The console was checked by component tests, a production build, and recordings and screenshots taken in a real browser (Chromium through Playwright, light theme for the media; the dark theme was looked at but not recorded). It was not tested on other browsers or on a phone-sized screen beyond the responsive layout rules.
