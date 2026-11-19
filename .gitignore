@@ -29,3 +29,4 @@ scripts/demo/node_modules/
 scripts/demo/out/
 scripts/demo/facts.json
 reports/phase9/*.json
+reports/agent_multi_guards_no_*.json
