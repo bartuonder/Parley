@@ -141,7 +141,7 @@ Each phase ends with working code, tests, and a measurable result. Mark phases d
 
 ## Today: Phase 9 kickoff
 1. Propose the plan for the presentation (README with architecture diagram, eval report, ablation tables, demo video script, technical write-up) and wait for approval. Pull the numbers from `docs/EVAL.md`, `docs/RAG_ABLATION.md`, `docs/SECURITY.md`, `docs/OBSERVABILITY.md` and `docs/SERVICE.md`, and keep their stated caveats.
-2. Before writing claims, settle the open items: the per-guard ablation was never run, pass^4 (the project target) was never measured, ATK-027 and SHP-002 stay unstable, and the service has not been deployed to a cloud host.
+2. Before writing claims, settle the open items: the per-guard ablation was never run, pass^4 (the project target) exists only for the Phase 5 code (98.2% core, 96.8% held-out in `docs/EVAL.md`) while later runs used three repeats, ATK-027 and SHP-002 stay unstable, and the service has not been deployed to a cloud host.
 3. Implement in small commits, lint and tests before every commit.
 
 ## Progress
